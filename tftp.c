@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <signal.h>
+#include <time.h>
 
 #define MAXBUFFER 512
 #define ADDRBUFFER 128
@@ -51,12 +53,23 @@ typedef struct tftp_packet{
 	error_packet ep; //3
 } tftp_packet;
 
+
+void handle_alarm(int sig) {
+	printf("No response after 10 seconds. Program terminated.\n");
+	exit(0);
+}
+
 int main(int argc, char* argv[]) {
 	// Check that there are three command line arguments --- file, start port, and end port
 	if(argc != 3) {
 		fprintf(stderr, "ERROR: Invalid arguments!\n");
 		return EXIT_FAILURE;
 	}
+
+	// Installing the alarm handler
+	signal(SIGALRM, handle_alarm);
+
+	int t = time(NULL);
 
 	// Read in the start and end ports
 	unsigned short int startPort = atoi(argv[1]);
@@ -116,6 +129,10 @@ int main(int argc, char* argv[]) {
 	    /* read a datagram from the remote client side (BLOCKING) */
 	    n = recvfrom( sd, client_request, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
 	                  (socklen_t *) &len );
+
+	    // Set alarm for 10 seconds, and terminate the program if no response
+	    printf("Setting up alarm for 10 seconds.\n");
+		alarm(10);
 
 		if ( n == -1 ) 
 		{
@@ -177,25 +194,9 @@ int main(int argc, char* argv[]) {
 					}
 
 	    		}
-	    		else if(packet.opcode == 3) // DRQ
-	    		{
-
-	    		}
-	    		else if(packet.opcode == 4) // ARQ
-	    		{
-
-	    		}
-	    		else if(packet.opcode == 5) // Error
-	    		{
-
-	    		}
 	    	}
-
-
-
 			/* echo the data back to the sender/client */
 			sendto( sd, buffer, n, 0, (struct sockaddr *) &client, len );
-
 			/* to do: check the return code of sendto() */
 	    }
 	}
