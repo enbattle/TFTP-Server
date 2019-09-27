@@ -156,8 +156,10 @@ int main(int argc, char* argv[]) {
 					tftp_packet client_packet;
 					while(1)
 					{
-						num_bytes = recvfrom( sd, &client_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
+						//TODO: IMPLEMENT TIMEOUT BEHAVIOR
+						recvfrom( sd, &client_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
 							(socklen_t *) &len );
+						num_bytes = strlen(client_packet.dp.data);
 						printf("RECEIVED (%d) bytes:\n %s\n", num_bytes, client_packet.dp.data);
 						//send an acknowledgement for each packet received
 		    			response_packet = malloc(sizeof(tftp_packet));
