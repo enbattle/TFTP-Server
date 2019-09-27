@@ -124,51 +124,6 @@ int main(int argc, char* argv[]) {
 
 	//---------Application Level---------------------------------------
 
-	//Sample data packets to send over
-
-    char* msg1 = "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK";
-    char* msg2 = "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL";
-    char* msg3 = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
-    char* msg4 = "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN";
-    char* msg5 = "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO";
-    char* msg6 = "This should break the connection to the client";
-
-    tftp_packet dp1;
-    dp1.dp.opcode = 3;
-    dp1.dp.block_number = 1;
-    strcpy(dp1.dp.data, msg1);
-
-    tftp_packet dp2;
-    dp2.dp.opcode = 3;
-    dp2.dp.block_number = 2;
-    strcpy(dp2.dp.data, msg2);
-
-    tftp_packet dp3;
-    dp3.dp.opcode = 3;
-    dp3.dp.block_number = 3;
-    strcpy(dp3.dp.data, msg3);
-
-    tftp_packet dp4;
-    dp4.dp.opcode = 3;
-    dp4.dp.block_number = 4;
-    strcpy(dp4.dp.data, msg4);
-
-	tftp_packet dp5;
-    dp5.dp.opcode = 3;
-    dp5.dp.block_number = 5;
-    strcpy(dp5.dp.data, msg5);
-
-	tftp_packet dp6;
-    dp6.dp.opcode = 3;
-    dp6.dp.block_number = 6;
-    strcpy(dp6.dp.data, msg6);
-
-    tftp_packet file_data_packets[6] = {dp1, dp2, dp3, dp4, dp5, dp6};
-
-    //Test file name to read from and read to (fake)
-    char* test_file = "test.txt";
-
-
 	// Server is starting
 	printf("TFTP server at port number %d\n", ntohs(server.sin_port));
 
@@ -296,39 +251,61 @@ int main(int argc, char* argv[]) {
 	    		else if(packet.opcode == 2) //WRQ
 	    		{
 
-	    			//send an acknowledgement packet
-	    			tftp_packet* response_packet = malloc(sizeof(tftp_packet));
-	    			response_packet->packet_type = 2;
-	    			response_packet->ap.opcode = 4;
-	    			response_packet->ap.block_number = 0;
-					sendto(sd, response_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );
-					free(response_packet);
+	    			//Cannot write to a file that already exists
+	    			if( access( packet.filename, F_OK ) != -1 )
+	    			{
 
-					//read the file in blocks of 512 bytes
-					int num_bytes;
-					tftp_packet client_packet;
-					while(1)
-					{
-						//TODO: IMPLEMENT TIMEOUT BEHAVIOR
-						recvfrom( sd, &client_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
-							(socklen_t *) &len );
-						num_bytes = strlen(client_packet.dp.data);
-						printf("RECEIVED (%d) bytes:\n %s\n", num_bytes, client_packet.dp.data);
-						//send an acknowledgement for each packet received
-		    			response_packet = malloc(sizeof(tftp_packet));
-		    			response_packet->packet_type = 2;
+	    				//TODO: send error packet
+	    				printf("File already exists!\n");
+
+	    			}
+	    			else
+	    			{
+	    				//Open new file for writing
+	    				FILE *file = fopen(packet.filename ,"w");
+
+    				    if(file == NULL)
+					    {
+					        /* File not created hence exit */
+					        printf("Unable to create file.\n");
+					        exit(EXIT_FAILURE);
+					    }
+
+		    			//send an acknowledgement packet
+		    			tftp_packet* response_packet = malloc(sizeof(tftp_packet));
+		    			response_packet->packet_type = 4;
 		    			response_packet->ap.opcode = 4;
-		    			response_packet->ap.block_number = client_packet.dp.block_number;
-						sendto(sd, response_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );	
-						free(response_packet);					
+		    			response_packet->ap.block_number = 0;
+						sendto(sd, response_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );
+						free(response_packet);
 
-						if(num_bytes < 512)
+						//read the file in blocks of 512 bytes
+						int num_bytes;
+						tftp_packet client_packet;
+						while(1)
 						{
-							printf("Client closed connection\n");
-							break;
-						}
-					}
+							recvfrom( sd, &client_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
+								(socklen_t *) &len );
+							num_bytes = strlen(client_packet.dp.data);
+							printf("RECEIVED (%d) bytes:\n %s\n", num_bytes, client_packet.dp.data);
+							fputs(client_packet.dp.data, file);
+							//send an acknowledgement for each packet received
+			    			response_packet = malloc(sizeof(tftp_packet));
+			    			response_packet->packet_type = 4;
+			    			response_packet->ap.opcode = 4;
+			    			response_packet->ap.block_number = client_packet.dp.block_number;
+							sendto(sd, response_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );	
+							free(response_packet);					
 
+							if(num_bytes < 512)
+							{
+								printf("Client closed connection\n");
+								break;
+							}
+						}
+
+						fclose(file);
+	    			}
 	    		}
 	    	}
 			/* echo the data back to the sender/client */
