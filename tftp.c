@@ -110,9 +110,17 @@ int main(int argc, char* argv[]) {
 			printf( "Rcvd datagram from %s port %d\n",
 				inet_ntoa( client.sin_addr ), ntohs( client.sin_port ) );
 			printf( "RCVD %d bytes\n", n );
-			printf("Received request.\n opcode: %u\n filename: %s\n padding1: %u\n mode: %s\n padding2: %u\n",
-				client_request.opcode, client_request.filename, client_request.padding1, client_request.mode,
-				client_request.padding2);
+			// printf("Received request.\n opcode: %u\n filename: %s\n padding1: %u\n mode: %s\n padding2: %u\n",
+			// 	client_request.opcode, client_request.filename, client_request.padding1, client_request.mode,
+			// 	client_request.padding2);
+			printf("Received request.\n");
+			printf("opcode: %u\n", client_request.opcode);
+			printf("filename: %s\n", client_request.filename);
+			printf("padding1: %u\n", client_request.padding1);
+			printf("mode: %s\n", client_request.mode);
+			printf("padding2: %u\n", client_request.padding2);
+
+
 
 			/* echo the data back to the sender/client */
 			sendto( sd, buffer, n, 0, (struct sockaddr *) &client, len );
