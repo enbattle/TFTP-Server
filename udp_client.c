@@ -116,7 +116,7 @@ int main() {
 
     tftp_packet dp3;
     dp3.dp.opcode = 3;
-    dp3.dp.block_number = 1;
+    dp3.dp.block_number = 3;
     strcpy(dp3.dp.data, msg3);
 
     //Send and receive an acknowledge for each packet
