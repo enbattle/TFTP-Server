@@ -10,6 +10,32 @@
 #define MAXBUFFER 512
 #define ADDRBUFFER 128
 
+typedef struct request_packet {
+   uint16_t opcode;
+   char* filename;
+   uint8_t padding1;
+   char* mode;
+   uint8_t padding2;
+} request_packet;
+
+typedef struct data_packet {
+   uint16_t opcode;
+   uint16_t block_number;
+   char* data;
+} data_packet;
+
+typedef struct ack_packet {
+   uint16_t opcode;
+   uint16_t block_number;
+} ack_packet;
+
+typedef struct error_packet {
+   uint16_t opcode;
+   uint16_t error_code;
+   char* error_message;
+   uint8_t padding;
+} error_packet;
+
 int main(int argc, char* argv[]) {
 	// Check that there are three command line arguments --- file, start port, and end port
 	if(argc != 3) {
@@ -28,9 +54,9 @@ int main(int argc, char* argv[]) {
 	int j;
 
 	// Create TFTP socket
-	int tftp = socket(AF_INET, SOCK_DGRAM, 0);
+	int sd = socket(AF_INET, SOCK_DGRAM, 0);
 
-	if(tftp < 0) {
+	if(sd < 0) {
 		fprintf(stderr, "ERROR: socket creation failed!\n");
 		return EXIT_FAILURE;
 	}
@@ -42,25 +68,57 @@ int main(int argc, char* argv[]) {
 	server.sin_addr.s_addr = htonl(INADDR_ANY);
 	server.sin_port = htons(startPort);
 
-	int len = sizeof(server);
+	int length = sizeof(server);
 
 	// Bind server to a port
-	if(bind(tftp, (struct sockaddr*) &server, len) < 0) {
+	if(bind(sd, (struct sockaddr*) &server, length) < 0) {
 		fprintf(stderr, "ERROR: Bind to TFTP socket failed!\n");
 		return EXIT_FAILURE;
 	}
 
 	// Obtain the assigned port number
-	if(getsockname(tftp, (struct sockaddr*) &server, (socklen_t *) &len) < 0) {
+	if(getsockname(sd, (struct sockaddr*) &server, (socklen_t *) &length) < 0) {
 		fprintf(stderr, "ERROR: Failure getting the port number!\n");
 		return EXIT_FAILURE;
 	}
 
+
+	//---------Application Level---------------------------------------
+
+
 	// Server is starting
 	printf("TFTP server at port number %d\n", ntohs(server.sin_port));
 
-	while(1) {
 
+  	int n;
+  	char buffer[ MAXBUFFER ];
+  	struct sockaddr_in client;
+  	int len = sizeof( client );
+  	request_packet client_request;
+	while ( 1 )
+	{
+	    /* read a datagram from the remote client side (BLOCKING) */
+	    n = recvfrom( sd, &client_request, sizeof(client_request), 0, (struct sockaddr *) &client,
+	                  (socklen_t *) &len );
+
+		if ( n == -1 ) 
+		{
+	      perror( "recvfrom() failed" );
+	    }
+	    else
+	    {
+			printf( "Rcvd datagram from %s port %d\n",
+				inet_ntoa( client.sin_addr ), ntohs( client.sin_port ) );
+			printf( "RCVD %d bytes\n", n );
+			printf("Received request.\n opcode: %u\n filename: %s\n padding1: %u\n mode: %s\n padding2: %u\n",
+				client_request.opcode, client_request.filename, client_request.padding1, client_request.mode,
+				client_request.padding2);
+
+			/* echo the data back to the sender/client */
+			sendto( sd, buffer, n, 0, (struct sockaddr *) &client, len );
+
+			/* to do: check the return code of sendto() */
+	    }
 	}
 
 	return EXIT_SUCCESS;
