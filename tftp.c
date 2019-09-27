@@ -175,6 +175,18 @@ int main(int argc, char* argv[]) {
 					}
 
 	    		}
+	    		else if(packet.opcode == 3) // DRQ
+	    		{
+
+	    		}
+	    		else if(packet.opcode == 4) // ARQ
+	    		{
+
+	    		}
+	    		else if(packet.opcode == 5) // Error
+	    		{
+
+	    		}
 	    	}
 
 
