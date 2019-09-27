@@ -208,7 +208,7 @@ int main() {
     // dp4.dp.block_number = 4;
     // strcpy(dp4.dp.data, msg4);
 
-    // //Send and receive an acknowledge for each packet
+    //Send and receive an acknowledge for each packet
     // printf("Sending msg: %s\n", msg1);
     // sendto(sockfd, &dp1, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
     // response_packet = malloc(sizeof(tftp_packet));

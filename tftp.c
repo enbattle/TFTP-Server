@@ -19,6 +19,17 @@
 //   4     Acknowledgment (ACK)
 //   5     Error (ERROR)
 
+//Error codes
+   // 0         Not defined, see error message (if any).
+   // 1         File not found.
+   // 2         Access violation.
+   // 3         Disk full or allocation exceeded.
+   // 4         Illegal TFTP operation.
+   // 5         Unknown transfer ID.
+   // 6         File already exists.
+   // 7         No such user.
+//only need to do code 1,4, and 6
+
 typedef struct request_packet {
    uint16_t opcode;
    char filename[256];
@@ -199,40 +210,92 @@ int main(int argc, char* argv[]) {
 
 	    		if(packet.opcode == 1) //RRQ
 	    		{
-	    			//check if this file exists
-	    			//may have a list of files?
-	    			if(strcmp(packet.filename,test_file) == 0)
-	    			{
-	    				//Send the data packets and wait for acknowledgements
-	    				tftp_packet file_data_packet, client_packet;
-						//TODO: Change this to a while loop iterating through file data
-						for(int i = 0; i < 6; i++){
-							file_data_packet = file_data_packets[i];
-							sendto(sd, &file_data_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );	
-							recvfrom( sd, &client_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
-								(socklen_t *) &len );
-							if(client_packet.ap.opcode == 4)
-								printf("Receivd ack packet\n");
-							else
-							{
-								//TODO: Implement timeout behavior
-								printf("Received something wack. Go fix your shit\n");
-							}
-						}
 
+	    			//check if this file exists
+	    			if( access( packet.filename, F_OK ) != -1 ) 
+	    			{
+	    				//open the file for reading
+    				    FILE *file = fopen(packet.filename, "r");
+    				    char* file_string;
+					    size_t n = 0;
+					    int c;
+
+					    if (file == NULL) return NULL; //could not open file
+					    fseek(file, 0, SEEK_END);
+					    long f_size = ftell(file);
+					    fseek(file, 0, SEEK_SET);
+
+					    printf("This is the length of the file: %ld\n", f_size);
+
+					    tftp_packet* file_data_packet;
+					    if(f_size < 512)
+					    {
+					    	//send the entire file if it's less than 512 bytes
+					    	file_string = calloc(f_size, sizeof(char));
+						    while ((c = fgetc(file)) != EOF)
+						    {
+						        file_string[n++] = (char)c;
+						    }
+						    file_data_packet = malloc(sizeof(tftp_packet));
+						    file_data_packet->dp.opcode = 3;
+						    file_data_packet->dp.block_number = 1;
+						    strncpy(file_data_packet->dp.data, file_string, n+1);
+							sendto(sd, file_data_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );	
+						    free(file_string);
+						    free(file_data_packet);
+					    }
+					    else
+					    {
+					    	//iterate through the file and send every 512 bytes
+					    	file_string = calloc(512, sizeof(char));
+					    	while ((c = fgetc(file)) != EOF)
+					    	{
+					    		if(n == 511)
+					    		{
+								    file_data_packet = malloc(sizeof(tftp_packet));
+								    file_data_packet->dp.opcode = 3;
+								    file_data_packet->dp.block_number = 1;
+								    strncpy(file_data_packet->dp.data, file_string, n+1);
+									sendto(sd, file_data_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );
+						    		free(file_data_packet);
+						    		memset(file_string,0,n); //empty the string
+						    		n = 0;
+					    		}
+					    		else
+					    		{
+					    			file_string[n++] = (char)c;
+					    		}
+					    	}
+
+					    	//send leftover string (last bloc)
+					    	if(n != 0)
+					    	{ 
+							    file_data_packet = malloc(sizeof(tftp_packet));
+							    file_data_packet->dp.opcode = 3;
+							    file_data_packet->dp.block_number = 1;
+							    strncpy(file_data_packet->dp.data, file_string, n+1);
+								sendto(sd, file_data_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );	
+						    	free(file_data_packet);			    		
+					    	}
+					    	free(file_string);
+					    }
+					    fclose(file);
 	    			}
 	    			else
 	    			{
-	    				//TODO: SEND ERROR PACKET
+
+	    				//The file doesn't exist so send an error packet
 	    				printf("This file doesn't exist\n");
+	    			
 	    			}
 	    			break;
 
-	    			//send the first data packet to be read
+
 
 	    		}
 	    		else if(packet.opcode == 2) //WRQ
 	    		{
+
 	    			//send an acknowledgement packet
 	    			tftp_packet* response_packet = malloc(sizeof(tftp_packet));
 	    			response_packet->packet_type = 2;
