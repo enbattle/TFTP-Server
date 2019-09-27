@@ -10,6 +10,13 @@
 #define MAXBUFFER 512
 #define ADDRBUFFER 128
 
+// opcode  operation
+//   1     Read request (RRQ)
+//   2     Write request (WRQ)
+//   3     Data (DATA)
+//   4     Acknowledgment (ACK)
+//   5     Error (ERROR)
+
 typedef struct request_packet {
    uint16_t opcode;
    char filename[256];
@@ -37,11 +44,11 @@ typedef struct error_packet {
 } error_packet;
 
 typedef struct tftp_packet{
-	int packet_type;
-	request_packet rp;
-	data_packet dp;
-	ack_packet ap;
-	error_packet ep;
+	int packet_type; //0: request_packet, 1: data_packet,...
+	request_packet rp; // 0
+	data_packet dp; // 1
+	ack_packet ap; // 2
+	error_packet ep; //3
 } tftp_packet;
 
 int main(int argc, char* argv[]) {
@@ -116,30 +123,59 @@ int main(int argc, char* argv[]) {
 	    }
 	    else
 	    {
-			printf( "Rcvd datagram from %s port %d\n",
+	    	printf( "Rcvd datagram from %s port %d\n",
 				inet_ntoa( client.sin_addr ), ntohs( client.sin_port ) );
-			printf( "RCVD %d bytes\n", n );
-			// printf("Received request.\n opcode: %u\n filename: %s\n padding1: %u\n mode: %s\n padding2: %u\n",
-			// 	client_request.opcode, client_request.filename, client_request.padding1, client_request.mode,
-			// 	client_request.padding2);
-			printf("Received request.\n");
-			printf("Packet type: %d\n", client_request->packet_type);
-			printf("RP opcode: %u\n", client_request->rp.opcode);
-			printf("DP opcode: %u\n", client_request->dp.opcode);
-			printf("AP opcode: %u\n", client_request->ap.opcode);
-			printf("EP opcode: %u\n", client_request->ep.opcode);
+			// printf("Packet type: %d\n", client_request->packet_type);
+			// printf("filename: %s\n", client_request->rp.filename);
+			// printf("padding1: %u\n", client_request->rp.padding1);
+			// printf("mode: %s\n", client_request->rp.mode);
+			// printf("padding2: %u\n", client_request->rp.padding2);
 
+	    	if(client_request->packet_type == 0) // Request packet
+	    	{
+	    		printf("Request packet identified\n");
+	    		request_packet packet = client_request->rp;
 
+	    		if(packet.opcode == 1) //RRQ
+	    		{
+	    			//send the first data packet to be read
 
+	    		}
+	    		else if(packet.opcode == 2) //WRQ
+	    		{
+	    			//send an acknowledgement packet
+	    			tftp_packet* response_packet = malloc(sizeof(tftp_packet));
+	    			response_packet->packet_type = 2;
+	    			response_packet->ap.opcode = 4;
+	    			response_packet->ap.block_number = 0;
+					sendto(sd, response_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );
+					free(response_packet);
 
+					//read the file in blocks of 512 bytes
+					int num_bytes;
+					tftp_packet client_packet;
+					while(1)
+					{
+						num_bytes = recvfrom( sd, &client_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
+							(socklen_t *) &len );
+						printf("RECEIVED (%d) bytes:\n %s\n", num_bytes, client_packet.dp.data);
+						//send an acknowledgement for each packet received
+		    			response_packet = malloc(sizeof(tftp_packet));
+		    			response_packet->packet_type = 2;
+		    			response_packet->ap.opcode = 4;
+		    			response_packet->ap.block_number = client_packet.dp.block_number;
+						sendto(sd, response_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );	
+						free(response_packet);					
 
+						if(num_bytes < 512)
+						{
+							printf("Client closed connection\n");
+							break;
+						}
+					}
 
-
-
-			printf("filename: %s\n", client_request->rp.filename);
-			printf("padding1: %u\n", client_request->rp.padding1);
-			printf("mode: %s\n", client_request->rp.mode);
-			printf("padding2: %u\n", client_request->rp.padding2);
+	    		}
+	    	}
 
 
 
