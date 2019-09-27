@@ -36,7 +36,7 @@ typedef struct error_packet {
    uint8_t padding;
 } error_packet;
 
-typedef union {
+typedef struct tftp_packet{
 	int packet_type;
 	request_packet rp;
 	data_packet dp;
@@ -124,7 +124,18 @@ int main(int argc, char* argv[]) {
 			// 	client_request.padding2);
 			printf("Received request.\n");
 			printf("Packet type: %d\n", client_request->packet_type);
-			printf("opcode: %u\n", client_request->rp.opcode);
+			printf("RP opcode: %u\n", client_request->rp.opcode);
+			printf("DP opcode: %u\n", client_request->dp.opcode);
+			printf("AP opcode: %u\n", client_request->ap.opcode);
+			printf("EP opcode: %u\n", client_request->ep.opcode);
+
+
+
+
+
+
+
+
 			printf("filename: %s\n", client_request->rp.filename);
 			printf("padding1: %u\n", client_request->rp.padding1);
 			printf("mode: %s\n", client_request->rp.mode);

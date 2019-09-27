@@ -37,7 +37,7 @@ typedef struct error_packet {
    uint8_t padding;
 } error_packet;
 
-typedef union {
+typedef struct tftp_packet{
     int packet_type;
     request_packet rp;
     data_packet dp;
@@ -68,7 +68,7 @@ int main() {
 
     //SENDING MESSAGE----------------------------------------------
     tftp_packet* request = malloc(sizeof(tftp_packet));
-    request->packet_type = 0;
+    request->packet_type = 1;
     request->rp.opcode = 2;
     strcpy(request->rp.filename, "test.txt");
     request->rp.padding1 = 0;
