@@ -13,16 +13,16 @@
 
 typedef struct request_packet {
    uint16_t opcode;
-   char* filename;
+   char filename[256];
    uint8_t padding1;
-   char* mode;
+   char mode[20];
    uint8_t padding2;
 } request_packet;
 
 typedef struct data_packet {
    uint16_t opcode;
    uint16_t block_number;
-   char* data;
+   char data[512];
 } data_packet;
 
 typedef struct ack_packet {
@@ -33,7 +33,7 @@ typedef struct ack_packet {
 typedef struct error_packet {
    uint16_t opcode;
    uint16_t error_code;
-   char* error_message;
+   char error_message[256];
    uint8_t padding;
 } error_packet;
   
@@ -61,18 +61,16 @@ int main() {
 
     //SENDING MESSAGE----------------------------------------------
     request_packet* r1 = malloc(sizeof(request_packet));
-    r1->opcode = 01;
-    r1->filename = calloc(8, sizeof(char));
+    r1->opcode = 1;
     strcpy(r1->filename, "test.txt");
     r1->padding1 = 0;
-    r1->mode = calloc(6, sizeof(char));
-    r1->mode = "binary";
+    strcpy(r1->mode, "binary");
 
     printf("Before Sending.\n opcode: %u\n filename: %s\n padding1: %u\n mode: %s\n padding2: %u\n",
         r1->opcode, r1->filename, r1->padding1, r1->mode,
         r1->padding2);
 
-    sendto(sockfd, r1, sizeof(r1), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr)); 
+    sendto(sockfd, r1, sizeof(request_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr)); 
     printf("r1 message sent.\n"); 
           
     n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 

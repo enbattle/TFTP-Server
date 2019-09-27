@@ -12,16 +12,16 @@
 
 typedef struct request_packet {
    uint16_t opcode;
-   char* filename;
+   char filename[256];
    uint8_t padding1;
-   char* mode;
+   char mode[20];
    uint8_t padding2;
 } request_packet;
 
 typedef struct data_packet {
    uint16_t opcode;
    uint16_t block_number;
-   char* data;
+   char data[512];
 } data_packet;
 
 typedef struct ack_packet {
@@ -32,7 +32,7 @@ typedef struct ack_packet {
 typedef struct error_packet {
    uint16_t opcode;
    uint16_t error_code;
-   char* error_message;
+   char error_message[256];
    uint8_t padding;
 } error_packet;
 

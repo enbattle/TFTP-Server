@@ -50,7 +50,7 @@ int main()
            /* any remote IP can send us a datagram */
 
   /* specify the port number for the server */
-  server.sin_port = htons( 8120 );  /* a 0 here means let the kernel assign
+  server.sin_port = htons( 8150 );  /* a 0 here means let the kernel assign
                                     us a port number to listen on */
 
   /* bind to a specific (OS-assigned) port number */
