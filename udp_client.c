@@ -36,7 +36,14 @@ typedef struct error_packet {
    char error_message[256];
    uint8_t padding;
 } error_packet;
-  
+
+typedef union {
+    int packet_type;
+    request_packet rp;
+    data_packet dp;
+    ack_packet ap;
+    error_packet ep;
+} tftp_packet;  
 // Driver code 
 int main() { 
     int sockfd; 
@@ -60,17 +67,19 @@ int main() {
     int n, len; 
 
     //SENDING MESSAGE----------------------------------------------
-    request_packet* r1 = malloc(sizeof(request_packet));
-    r1->opcode = 1;
-    strcpy(r1->filename, "test.txt");
-    r1->padding1 = 0;
-    strcpy(r1->mode, "binary");
+    tftp_packet* request = malloc(sizeof(tftp_packet));
+    request->packet_type = 0;
+    request->rp.opcode = 2;
+    strcpy(request->rp.filename, "test.txt");
+    request->rp.padding1 = 0;
+    strcpy(request->rp.mode, "binary");
 
-    printf("Before Sending.\n opcode: %u\n filename: %s\n padding1: %u\n mode: %s\n padding2: %u\n",
-        r1->opcode, r1->filename, r1->padding1, r1->mode,
-        r1->padding2);
+    printf("Before Sending.\n packet_type: %d\n opcode: %u\n filename: %s\n padding1: %u\n mode: %s\n padding2: %u\n",
+        request->packet_type, request->rp.opcode, request->rp.filename, request->rp.padding1, request->rp.mode,
+        request->rp.padding2);
 
-    sendto(sockfd, r1, sizeof(request_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr)); 
+
+    sendto(sockfd, request, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr)); 
     printf("r1 message sent.\n"); 
           
     n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 

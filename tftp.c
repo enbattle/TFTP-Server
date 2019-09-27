@@ -36,6 +36,14 @@ typedef struct error_packet {
    uint8_t padding;
 } error_packet;
 
+typedef union {
+	int packet_type;
+	request_packet rp;
+	data_packet dp;
+	ack_packet ap;
+	error_packet ep;
+} tftp_packet;
+
 int main(int argc, char* argv[]) {
 	// Check that there are three command line arguments --- file, start port, and end port
 	if(argc != 3) {
@@ -94,11 +102,12 @@ int main(int argc, char* argv[]) {
   	char buffer[ MAXBUFFER ];
   	struct sockaddr_in client;
   	int len = sizeof( client );
-  	request_packet client_request;
+  	tftp_packet* client_request = malloc(sizeof(tftp_packet));
 	while ( 1 )
 	{
+
 	    /* read a datagram from the remote client side (BLOCKING) */
-	    n = recvfrom( sd, &client_request, sizeof(client_request), 0, (struct sockaddr *) &client,
+	    n = recvfrom( sd, client_request, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
 	                  (socklen_t *) &len );
 
 		if ( n == -1 ) 
@@ -114,11 +123,12 @@ int main(int argc, char* argv[]) {
 			// 	client_request.opcode, client_request.filename, client_request.padding1, client_request.mode,
 			// 	client_request.padding2);
 			printf("Received request.\n");
-			printf("opcode: %u\n", client_request.opcode);
-			printf("filename: %s\n", client_request.filename);
-			printf("padding1: %u\n", client_request.padding1);
-			printf("mode: %s\n", client_request.mode);
-			printf("padding2: %u\n", client_request.padding2);
+			printf("Packet type: %d\n", client_request->packet_type);
+			printf("opcode: %u\n", client_request->rp.opcode);
+			printf("filename: %s\n", client_request->rp.filename);
+			printf("padding1: %u\n", client_request->rp.padding1);
+			printf("mode: %s\n", client_request->rp.mode);
+			printf("padding2: %u\n", client_request->rp.padding2);
 
 
 
