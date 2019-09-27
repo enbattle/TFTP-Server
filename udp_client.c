@@ -119,6 +119,11 @@ int main() {
     dp3.dp.block_number = 3;
     strcpy(dp3.dp.data, msg3);
 
+    tftp_packet dp4;
+    dp4.dp.opcode = 3;
+    dp4.dp.block_number = 4;
+    strcpy(dp4.dp.data, msg4);
+
     //Send and receive an acknowledge for each packet
     printf("Sending msg: %s\n", msg1);
     sendto(sockfd, &dp1, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
@@ -140,6 +145,15 @@ int main() {
 
     printf("Sending msg: %s\n", msg3);
     sendto(sockfd, &dp3, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));  
+    response_packet = malloc(sizeof(tftp_packet));
+    n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
+    printf("Received packet from server:\n");
+    printf("opcode: %u\n", response_packet->ap.opcode);
+    printf("block_number: %u\n", response_packet->ap.block_number); 
+    free(response_packet);
+
+    printf("Sending msg: %s\n", msg4);
+    sendto(sockfd, &dp4, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));  
     response_packet = malloc(sizeof(tftp_packet));
     n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
     printf("Received packet from server:\n");
