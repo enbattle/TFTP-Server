@@ -75,12 +75,22 @@ int main() {
 
 
     //SENDING MESSAGE TO SERVER----------------------------------------------
+
+    //RRQ
     tftp_packet* request = malloc(sizeof(tftp_packet));
     request->packet_type = 0;
-    request->rp.opcode = 2;
+    request->rp.opcode = 1;
     strcpy(request->rp.filename, "test.txt");
     request->rp.padding1 = 0;
     strcpy(request->rp.mode, "binary");
+
+    //WRQ
+    // tftp_packet* request = malloc(sizeof(tftp_packet));
+    // request->packet_type = 0;
+    // request->rp.opcode = 2;
+    // strcpy(request->rp.filename, "test.txt");
+    // request->rp.padding1 = 0;
+    // strcpy(request->rp.mode, "binary");
 
     printf("Sending request packet:\n packet_type: %d\n opcode: %u\n filename: %s\n padding1: %u\n mode: %s\n padding2: %u\n",
         request->packet_type, request->rp.opcode, request->rp.filename, request->rp.padding1, request->rp.mode,
@@ -89,77 +99,151 @@ int main() {
 
     sendto(sockfd, request, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr)); 
 
-    //RECEIVE ACKNOWLEDGEMENT FROM SERVER
+    //RECEIVE DATA AND SEND ACKNOWLEDGEMENTS (RRQ)
     tftp_packet* response_packet = malloc(sizeof(tftp_packet));
+    tftp_packet acknowledgment_packet;
+    acknowledgment_packet.ap.opcode = 4;
+
     n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
     printf("Received packet from server:\n");
-    printf("opcode: %u\n", response_packet->ap.opcode);
-    printf("block_number: %u\n", response_packet->ap.block_number); 
+    printf("opcode: %u\n", response_packet->dp.opcode);
+    printf("block_number: %u\n", response_packet->dp.block_number); 
+    printf("data: %s\n", response_packet->dp.data);
     free(response_packet);
-
-    //SEND MESSAGE TO THE SERVER
-
-    char* msg1 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    char* msg2 = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
-    char* msg3 = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
-    char* msg4 = "This should break the connection";
-
-    tftp_packet dp1;
-    dp1.dp.opcode = 3;
-    dp1.dp.block_number = 1;
-    strcpy(dp1.dp.data, msg1);
-
-    tftp_packet dp2;
-    dp2.dp.opcode = 3;
-    dp2.dp.block_number = 2;
-    strcpy(dp2.dp.data, msg2);
-
-    tftp_packet dp3;
-    dp3.dp.opcode = 3;
-    dp3.dp.block_number = 3;
-    strcpy(dp3.dp.data, msg3);
-
-    tftp_packet dp4;
-    dp4.dp.opcode = 3;
-    dp4.dp.block_number = 4;
-    strcpy(dp4.dp.data, msg4);
-
-    //Send and receive an acknowledge for each packet
-    printf("Sending msg: %s\n", msg1);
-    sendto(sockfd, &dp1, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
+    printf("Sending ack packet\n");
+    acknowledgment_packet.ap.block_number = response_packet->dp.block_number;
+    sendto(sockfd, &acknowledgment_packet, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
     response_packet = malloc(sizeof(tftp_packet));
-    n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
-    printf("Received packet from server:\n");
-    printf("opcode: %u\n", response_packet->ap.opcode);
-    printf("block_number: %u\n", response_packet->ap.block_number); 
-    free(response_packet);
 
-    printf("Sending msg: %s\n", msg2);
-    sendto(sockfd, &dp2, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr)); 
-    response_packet = malloc(sizeof(tftp_packet));
     n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
     printf("Received packet from server:\n");
-    printf("opcode: %u\n", response_packet->ap.opcode);
-    printf("block_number: %u\n", response_packet->ap.block_number); 
+    printf("opcode: %u\n", response_packet->dp.opcode);
+    printf("block_number: %u\n", response_packet->dp.block_number); 
+    printf("data: %s\n", response_packet->dp.data);
     free(response_packet);
+    printf("Sending ack packet\n");
+    acknowledgment_packet.ap.block_number = response_packet->dp.block_number;
+    sendto(sockfd, &acknowledgment_packet, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
+    response_packet = malloc(sizeof(tftp_packet));
 
-    printf("Sending msg: %s\n", msg3);
-    sendto(sockfd, &dp3, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));  
-    response_packet = malloc(sizeof(tftp_packet));
     n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
     printf("Received packet from server:\n");
-    printf("opcode: %u\n", response_packet->ap.opcode);
-    printf("block_number: %u\n", response_packet->ap.block_number); 
+    printf("opcode: %u\n", response_packet->dp.opcode);
+    printf("block_number: %u\n", response_packet->dp.block_number); 
+    printf("data: %s\n", response_packet->dp.data);
     free(response_packet);
+    printf("Sending ack packet\n");
+    acknowledgment_packet.ap.block_number = response_packet->dp.block_number;
+    sendto(sockfd, &acknowledgment_packet, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
+    response_packet = malloc(sizeof(tftp_packet));
 
-    printf("Sending msg: %s\n", msg4);
-    sendto(sockfd, &dp4, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));  
-    response_packet = malloc(sizeof(tftp_packet));
     n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
     printf("Received packet from server:\n");
-    printf("opcode: %u\n", response_packet->ap.opcode);
-    printf("block_number: %u\n", response_packet->ap.block_number); 
+    printf("opcode: %u\n", response_packet->dp.opcode);
+    printf("block_number: %u\n", response_packet->dp.block_number);
+    printf("data: %s\n", response_packet->dp.data); 
     free(response_packet);
+    printf("Sending ack packet\n");
+    acknowledgment_packet.ap.block_number = response_packet->dp.block_number;
+    sendto(sockfd, &acknowledgment_packet, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
+    response_packet = malloc(sizeof(tftp_packet));
+
+    n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
+    printf("Received packet from server:\n");
+    printf("opcode: %u\n", response_packet->dp.opcode);
+    printf("block_number: %u\n", response_packet->dp.block_number); 
+    printf("data: %s\n", response_packet->dp.data);
+    free(response_packet);
+    printf("Sending ack packet\n");
+    acknowledgment_packet.ap.block_number = response_packet->dp.block_number;
+    sendto(sockfd, &acknowledgment_packet, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
+    response_packet = malloc(sizeof(tftp_packet));
+
+    n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
+    printf("Received packet from server:\n");
+    printf("opcode: %u\n", response_packet->dp.opcode);
+    printf("block_number: %u\n", response_packet->dp.block_number); 
+    printf("data: %s\n", response_packet->dp.data);
+    free(response_packet);
+    printf("Sending ack packet\n");
+    acknowledgment_packet.ap.block_number = response_packet->dp.block_number;
+    sendto(sockfd, &acknowledgment_packet, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
+    response_packet = malloc(sizeof(tftp_packet));
+
+
+    //RECEIVE ACKNOWLEDGEMENT FROM SERVER (WRQ)
+    // tftp_packet* response_packet = malloc(sizeof(tftp_packet));
+    // n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
+    // printf("Received packet from server:\n");
+    // printf("opcode: %u\n", response_packet->ap.opcode);
+    // printf("block_number: %u\n", response_packet->ap.block_number); 
+    // free(response_packet);
+
+
+
+    //UNCOMMENT BELOW TO TEST WRQ------------------------------------
+
+    // char* msg1 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    // char* msg2 = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+    // char* msg3 = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
+    // char* msg4 = "This should break the connection to the server";
+
+    // tftp_packet dp1;
+    // dp1.dp.opcode = 3;
+    // dp1.dp.block_number = 1;
+    // strcpy(dp1.dp.data, msg1);
+
+    // tftp_packet dp2;
+    // dp2.dp.opcode = 3;
+    // dp2.dp.block_number = 2;
+    // strcpy(dp2.dp.data, msg2);
+
+    // tftp_packet dp3;
+    // dp3.dp.opcode = 3;
+    // dp3.dp.block_number = 3;
+    // strcpy(dp3.dp.data, msg3);
+
+    // tftp_packet dp4;
+    // dp4.dp.opcode = 3;
+    // dp4.dp.block_number = 4;
+    // strcpy(dp4.dp.data, msg4);
+
+    // //Send and receive an acknowledge for each packet
+    // printf("Sending msg: %s\n", msg1);
+    // sendto(sockfd, &dp1, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));
+    // response_packet = malloc(sizeof(tftp_packet));
+    // n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
+    // printf("Received packet from server:\n");
+    // printf("opcode: %u\n", response_packet->ap.opcode);
+    // printf("block_number: %u\n", response_packet->ap.block_number); 
+    // free(response_packet);
+
+    // printf("Sending msg: %s\n", msg2);
+    // sendto(sockfd, &dp2, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr)); 
+    // response_packet = malloc(sizeof(tftp_packet));
+    // n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
+    // printf("Received packet from server:\n");
+    // printf("opcode: %u\n", response_packet->ap.opcode);
+    // printf("block_number: %u\n", response_packet->ap.block_number); 
+    // free(response_packet);
+
+    // printf("Sending msg: %s\n", msg3);
+    // sendto(sockfd, &dp3, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));  
+    // response_packet = malloc(sizeof(tftp_packet));
+    // n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
+    // printf("Received packet from server:\n");
+    // printf("opcode: %u\n", response_packet->ap.opcode);
+    // printf("block_number: %u\n", response_packet->ap.block_number); 
+    // free(response_packet);
+
+    // printf("Sending msg: %s\n", msg4);
+    // sendto(sockfd, &dp4, sizeof(tftp_packet), MSG_CONFIRM, (const struct sockaddr *) &servaddr,  sizeof(servaddr));  
+    // response_packet = malloc(sizeof(tftp_packet));
+    // n = recvfrom(sockfd, response_packet, MAXLINE, 0, (struct sockaddr *) &servaddr, (socklen_t*)&len); 
+    // printf("Received packet from server:\n");
+    // printf("opcode: %u\n", response_packet->ap.opcode);
+    // printf("block_number: %u\n", response_packet->ap.block_number); 
+    // free(response_packet);
   
     close(sockfd); 
     return 0; 
