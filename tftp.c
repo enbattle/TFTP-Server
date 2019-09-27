@@ -57,11 +57,11 @@ typedef struct error_packet {
 } error_packet;
 
 typedef struct tftp_packet{
-	int packet_type; //0: request_packet, 1: data_packet,...
-	request_packet rp; // 0
-	data_packet dp; // 1
-	ack_packet ap; // 2
-	error_packet ep; //3
+	int packet_type; // 1 and 2: request_packet, 3: data_packet,...
+	request_packet rp; // 1 and 2
+	data_packet dp; // 3
+	ack_packet ap; // 4
+	error_packet ep; //5
 } tftp_packet;
 
 
@@ -79,8 +79,6 @@ int main(int argc, char* argv[]) {
 
 	// Installing the alarm handler
 	signal(SIGALRM, handle_alarm);
-
-	int t = time(NULL);
 
 	// Read in the start and end ports
 	unsigned short int startPort = atoi(argv[1]);
@@ -124,66 +122,26 @@ int main(int argc, char* argv[]) {
 
 	//---------Application Level---------------------------------------
 
-	//Sample data packets to send over
-
-    char* msg1 = "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK";
-    char* msg2 = "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL";
-    char* msg3 = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
-    char* msg4 = "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN";
-    char* msg5 = "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO";
-    char* msg6 = "This should break the connection to the client";
-
-    tftp_packet dp1;
-    dp1.dp.opcode = 3;
-    dp1.dp.block_number = 1;
-    strcpy(dp1.dp.data, msg1);
-
-    tftp_packet dp2;
-    dp2.dp.opcode = 3;
-    dp2.dp.block_number = 2;
-    strcpy(dp2.dp.data, msg2);
-
-    tftp_packet dp3;
-    dp3.dp.opcode = 3;
-    dp3.dp.block_number = 3;
-    strcpy(dp3.dp.data, msg3);
-
-    tftp_packet dp4;
-    dp4.dp.opcode = 3;
-    dp4.dp.block_number = 4;
-    strcpy(dp4.dp.data, msg4);
-
-	tftp_packet dp5;
-    dp5.dp.opcode = 3;
-    dp5.dp.block_number = 5;
-    strcpy(dp5.dp.data, msg5);
-
-	tftp_packet dp6;
-    dp6.dp.opcode = 3;
-    dp6.dp.block_number = 6;
-    strcpy(dp6.dp.data, msg6);
-
-    tftp_packet file_data_packets[6] = {dp1, dp2, dp3, dp4, dp5, dp6};
-
-    //Test file name to read from and read to (fake)
-    char* test_file = "test.txt";
-
 
 	// Server is starting
 	printf("TFTP server at port number %d\n", ntohs(server.sin_port));
 
 
   	int n;
-  	char buffer[ MAXBUFFER ];
-  	struct sockaddr_in client;
-  	int len = sizeof( client );
-  	tftp_packet* client_request = malloc(sizeof(tftp_packet));
 	while ( 1 )
 	{
+		char buffer[ MAXBUFFER ];
+	  	struct sockaddr_in client;
+	  	int len = sizeof( client );
+	  	tftp_packet* client_request = malloc(sizeof(tftp_packet));
 
 	    /* read a datagram from the remote client side (BLOCKING) */
 	    n = recvfrom( sd, client_request, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
 	                  (socklen_t *) &len );
+
+	    int opcode = ntohs(client_request->packet_type);
+
+	    printf("%d\n", opcode);
 
 	    // Set alarm for 10 seconds, and terminate the program if no response
 	    printf("Setting up alarm for 10 seconds.\n");
@@ -197,18 +155,13 @@ int main(int argc, char* argv[]) {
 	    {
 	    	printf( "Rcvd datagram from %s port %d\n",
 				inet_ntoa( client.sin_addr ), ntohs( client.sin_port ) );
-			// printf("Packet type: %d\n", client_request->packet_type);
-			// printf("filename: %s\n", client_request->rp.filename);
-			// printf("padding1: %u\n", client_request->rp.padding1);
-			// printf("mode: %s\n", client_request->rp.mode);
-			// printf("padding2: %u\n", client_request->rp.padding2);
 
-	    	if(client_request->packet_type == 0) // Request packet
+	    	if(opcode == 1 || opcode == 2) // Request packet
 	    	{
 	    		printf("Request packet identified\n");
 	    		request_packet packet = client_request->rp;
 
-	    		if(packet.opcode == 1) //RRQ
+	    		if(opcode == 1) //RRQ
 	    		{
 
 	    			//check if this file exists
@@ -289,11 +242,9 @@ int main(int argc, char* argv[]) {
 	    			
 	    			}
 	    			break;
-
-
-
 	    		}
-	    		else if(packet.opcode == 2) //WRQ
+
+	    		else if(opcode == 2) //WRQ
 	    		{
 
 	    			//send an acknowledgement packet
@@ -328,12 +279,12 @@ int main(int argc, char* argv[]) {
 							break;
 						}
 					}
-
 	    		}
 	    	}
-			/* echo the data back to the sender/client */
-			sendto( sd, buffer, n, 0, (struct sockaddr *) &client, len );
-			/* to do: check the return code of sendto() */
+	    	else 
+	    	{
+	    		sendto( sd, "Invalid operation!\n", 19, 0, (struct sockaddr *) &client, len );
+	    	}
 	    }
 	}
 
