@@ -250,15 +250,18 @@ int main(int argc, char* argv[]) {
 	    			}
 	    			else
 	    			{
+	    				fprintf(stderr, "ERROR: File not found.\n");
+
 	    				// Creating an "file not found" error packet
-						error_packet error = malloc(sizeof(error_packet));
-						error.opcode = 5;
-						error_code = 4;
-						strcpy(error_message[256], "File not found.\n");
-						padding = 0;
+						error_packet* error = malloc(sizeof(error_packet));
+						error->opcode = htons(5);
+						error->error_code = 4;
+						strcpy(error->error_message, "File not found.");
+						error->padding = 0;
 
 						// Sending error packet
-			    		sendto( sd, error, sizeof(error_packet), 0, (struct sockaddr *) &client, len );
+			    		sendto( sd, error, 4 + strlen(error->error_message) + 1, 0, 
+			    			(struct sockaddr *) &client, len );
 	    			
 	    			}
 	    		}
@@ -269,16 +272,18 @@ int main(int argc, char* argv[]) {
 	    			//Cannot write to a file that already exists
 	    			if( access( packet.filename, F_OK ) != -1 )
 	    			{
+	    				fprintf(stderr, "ERROR: File already exists.\n");
 
 	    				// Creating an "file already exists" error packet
-						error_packet error = malloc(sizeof(error_packet));
-						error.opcode = 5;
-						error_code = 4;
-						strcpy(error_message[256], "File already exists.\n");
-						padding = 0;
+						error_packet* error = malloc(sizeof(error_packet));
+						error->opcode = htons(5);
+						error->error_code = 4;
+						strcpy(error->error_message, "File already exists.");
+						error->padding = 0;
 
 						// Sending error packet
-			    		sendto( sd, error, sizeof(error_packet), 0, (struct sockaddr *) &client, len );
+			    		sendto( sd, error, 4 + strlen(error->error_message) + 1, 0, 
+			    			(struct sockaddr *) &client, len );
 
 	    			}
 	    			else
@@ -330,17 +335,24 @@ int main(int argc, char* argv[]) {
 
 	    		}
 	    	}
+	    	else if (opcode == 3) {
+
+	    	}
+
 	    	else 
 	    	{
+	    		fprintf(stderr, "ERROR: Illegal TFTP operation.\n");
+
 				// Creating an "invalid operation" error packet
-				error_packet error = malloc(sizeof(error_packet));
-				error.opcode = 5;
-				error_code = 4;
-				strcpy(error_message[256], "Illegal TFTP operation.\n");
-				padding = 0;
+				error_packet* error = malloc(sizeof(error_packet));
+				error->opcode = htons(5);
+				error->error_code = 4;
+				strcpy(error->error_message, "Illegal TFTP operation.");
+				error->padding = 0;
 
 				// Sending error packet
-	    		sendto( sd, error, sizeof(error_packet), 0, (struct sockaddr *) &client, len );
+	    		sendto( sd, error, 4 + strlen(error->error_message) + 1, 0, (struct sockaddr *) 
+	    			&client, len );
 	    	}
 	    }
 	}
