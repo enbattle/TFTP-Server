@@ -116,6 +116,11 @@ int main(int argc, char* argv[]) {
 	// Server is starting
 	printf("TFTP server at port number %d\n", ntohs(server.sin_port));
 
+	char* file_not_found_str = "File not found.";
+	char* file_already_exists_str = "File already exists.";
+	char* illegal_operation_str = "Illegal TFTP operation.";
+
+
   	int n;
 	while ( 1 )
 	{
@@ -260,140 +265,110 @@ int main(int argc, char* argv[]) {
 					    }
 					    fclose(file);
 	    			}
-	    	// 		else
-	    	// 		{
-	    	// 			fprintf(stderr, "ERROR: File not found.\n");
+	    			else
+	    			{
+	    				fprintf(stderr, "ERROR: File not found.\n");
 
-	    	// 			// Creating an "file not found" error packet
-						// error_packet* error = malloc(sizeof(error_packet));
-						// error->opcode = htons(5);
-						// error->error_code = 4;
-						// strcpy(error->error_message, "File not found.");
-						// error->padding = 0;
+	    				// Creating an "file not found" error packet
+						error_packet* error = malloc(sizeof(error_packet));
+						error->opcode = htons(5);
+						error->error_code = 4;
+						memcpy(error->error_message, (uint8_t*)file_not_found_str, strlen(file_not_found_str));
 
-						// // Sending error packet
-			   //  		sendto( sd, error, 4 + strlen(error->error_message) + 1, 0, 
-			   //  			(struct sockaddr *) &client, len );
+						// Sending error packet
+			    		sendto( sd, error, 4 + strlen(file_not_found_str) + 1, 0, 
+			    			(struct sockaddr *) &client, len );
+			    		free(error);
 	    			
-	    	// 		}
-
-
-
-	    	// 		//Cannot write to a file that already exists
-	    	// 		if( access( packet.filename, F_OK ) != -1 )
-	    	// 		{
-	    	// 			fprintf(stderr, "ERROR: File already exists.\n");
-
-	    	// 			// Creating an "file already exists" error packet
-						// error_packet* error = malloc(sizeof(error_packet));
-						// error->opcode = htons(5);
-						// error->error_code = 4;
-						// strcpy(error->error_message, "File already exists.");
-						// error->padding = 0;
-
-						// // Sending error packet
-			   //  		sendto( sd, error, 4 + strlen(error->error_message) + 1, 0, 
-			   //  			(struct sockaddr *) &client, len );
-
-
-
-    		// 		    if(file == NULL)
-					 //    {
-					 //        /* File not created hence exit */
-					 //        fprintf(stderr, "ERROR: unable to create file.\n");
-					 //        return EXIT_FAILURE;
-					 //    }
-
-
-
-
-
-
-
-
-
-
-
+	    			}
 
 	    		}
 	    		else if(opcode == 2) //WRQ
 	    		{
 
-	    	// 		//Cannot write to a file that already exists
-	    	// 		if( access( packet.filename, F_OK ) != -1 )
-	    	// 		{
+	    			printf("This is the filename we need to write to: %s\n", client_request.filename);
+	    			char* filename = (char*)client_request.filename;
+	    			//Cannot write to a file that already exists
+	    			if( access( filename, F_OK ) != -1 )
+	    			{
 
-	    	// 			//TODO: send error packet
-	    	// 			printf("File already exists!\n");
+						fprintf(stderr, "ERROR: File already exists.\n");
 
-	    	// 		}
-	    	// 		else
-	    	// 		{
-	    	// 			//Open new file for writing
-	    	// 			FILE *file = fopen(packet.filename ,"w");
+	    				// Creating an "file already exists" error packet
+						error_packet* error = malloc(sizeof(error_packet));
+						error->opcode = htons(5);
+						error->error_code = 4;
+						memcpy(error->error_message, (uint8_t*)file_already_exists_str, strlen(file_already_exists_str));
 
-    		// 		    if(file == NULL)
-					 //    {
-					 //        /* File not created hence exit */
-					 //        printf("Unable to create file.\n");
-					 //        exit(EXIT_FAILURE);
-					 //    }
+						// Sending error packet
+			    		sendto( sd, error, 4 + strlen(file_already_exists_str) + 1, 0, 
+			    			(struct sockaddr *) &client, len );
+			    		free(error);
 
-		    // 			//send an acknowledgement packet
-		    // 			tftp_packet* response_packet = malloc(sizeof(tftp_packet));
-		    // 			response_packet->packet_type = 4;
-		    // 			response_packet->ap.opcode = 4;
-		    // 			response_packet->ap.block_number = 0;
-						// sendto(sd, response_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );
-						// free(response_packet);
+	    			}
+	    			else
+	    			{
+	    				//Open new file for writing
+	    				FILE *file = fopen(filename ,"w");
 
-						// //read the file in blocks of 512 bytes
-						// int num_bytes;
-						// tftp_packet client_packet;
-						// while(1)
-						// {
-						// 	recvfrom( sd, &client_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
-						// 		(socklen_t *) &len );
-						// 	num_bytes = strlen(client_packet.dp.data);
-						// 	printf("RECEIVED (%d) bytes:\n %s\n", num_bytes, client_packet.dp.data);
-						// 	fputs(client_packet.dp.data, file);
-						// 	//send an acknowledgement for each packet received
-			   //  			response_packet = malloc(sizeof(tftp_packet));
-			   //  			response_packet->packet_type = 4;
-			   //  			response_packet->ap.opcode = 4;
-			   //  			response_packet->ap.block_number = client_packet.dp.block_number;
-						// 	sendto(sd, response_packet, sizeof(tftp_packet), 0, (struct sockaddr *) &client, len );	
-						// 	free(response_packet);					
+    				    if(file == NULL)
+					    {
+					        /* File not created hence exit */
+					        fprintf(stderr, "ERROR: Unable to create file.\n");
+					        return EXIT_FAILURE;
+					    }
 
-						// 	if(num_bytes < 512)
-						// 	{
-						// 		printf("Client closed connection\n");
-						// 		break;
-						// 	}
-						// }
-						// fclose(file);
-	    	// 		}
+		    			//send an acknowledgement packet
+		    			ack_packet acknowledgement;
+		    			acknowledgement.opcode = htons(4);
+		    			acknowledgement.block_number = htons(0);
+						sendto(sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client, len );
+
+						printf("About to write to %s\n", filename);
+
+						//read the file in blocks of 512 bytes
+						int num_bytes;
+						data_packet client_packet;
+						while(1)
+						{
+							recvfrom( sd, &client_packet, sizeof(data_packet), 0, (struct sockaddr *) &client,
+								(socklen_t *) &len );
+							num_bytes = strlen((char*)client_packet.data);
+							printf("RECEIVED (%d) bytes:\n%s\n", num_bytes, client_packet.data);
+							fwrite(client_packet.data, 1, num_bytes - 4, file);
+
+							//send an acknowledgement for each packet received
+			    			acknowledgement.opcode = htons(4);
+			    			acknowledgement.block_number = client_packet.block_number;
+			    			printf("Block number: %u\n", htons(acknowledgement.block_number));
+							sendto(sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client, len );
+
+							if(num_bytes < 512)
+							{
+								printf("Client closed connection\n");
+								//send an acknowledgement for each packet received
+								break;
+							}
+						}
+						fclose(file);
+	    			}
 
 	    		}
 	    	}
-	    	else if (opcode == 3) {
-
-	    	}
-
 	    	else 
 	    	{
-	   //  		fprintf(stderr, "ERROR: Illegal TFTP operation.\n");
+	    		fprintf(stderr, "ERROR: Illegal TFTP operation.\n");
 
-				// // Creating an "invalid operation" error packet
-				// error_packet* error = malloc(sizeof(error_packet));
-				// error->opcode = htons(5);
-				// error->error_code = 4;
-				// strcpy(error->error_message, "Illegal TFTP operation.");
-				// error->padding = 0;
+				// Creating an "invalid operation" error packet
+				error_packet* error = malloc(sizeof(error_packet));
+				error->opcode = htons(5);
+				error->error_code = 4;
+				memcpy(error->error_message, (uint8_t*)illegal_operation_str, strlen(illegal_operation_str));
 
-				// // Sending error packet
-	   //  		sendto( sd, error, 4 + strlen(error->error_message) + 1, 0, (struct sockaddr *) 
-	   //  			&client, len );
+				// Sending error packet
+	    		sendto( sd, error, 4 + strlen(illegal_operation_str) + 1, 0, (struct sockaddr *) 
+	    			&client, len );
+	    		free(error);
 	    	}
 	    }
 	}
