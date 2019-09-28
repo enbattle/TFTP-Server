@@ -250,9 +250,15 @@ int main(int argc, char* argv[]) {
 	    			}
 	    			else
 	    			{
+	    				// Creating an "file not found" error packet
+						error_packet error = malloc(sizeof(error_packet));
+						error.opcode = 5;
+						error_code = 4;
+						strcpy(error_message[256], "File not found.\n");
+						padding = 0;
 
-	    				//The file doesn't exist so send an error packet
-	    				printf("This file doesn't exist\n");
+						// Sending error packet
+			    		sendto( sd, error, sizeof(error_packet), 0, (struct sockaddr *) &client, len );
 	    			
 	    			}
 	    		}
@@ -264,8 +270,15 @@ int main(int argc, char* argv[]) {
 	    			if( access( packet.filename, F_OK ) != -1 )
 	    			{
 
-	    				//TODO: send error packet
-	    				printf("File already exists!\n");
+	    				// Creating an "file already exists" error packet
+						error_packet error = malloc(sizeof(error_packet));
+						error.opcode = 5;
+						error_code = 4;
+						strcpy(error_message[256], "File already exists.\n");
+						padding = 0;
+
+						// Sending error packet
+			    		sendto( sd, error, sizeof(error_packet), 0, (struct sockaddr *) &client, len );
 
 	    			}
 	    			else
@@ -276,8 +289,8 @@ int main(int argc, char* argv[]) {
     				    if(file == NULL)
 					    {
 					        /* File not created hence exit */
-					        printf("Unable to create file.\n");
-					        exit(EXIT_FAILURE);
+					        fprintf(stderr, "ERROR: unable to create file.\n");
+					        return EXIT_FAILURE;
 					    }
 
 		    			//send an acknowledgement packet
@@ -319,7 +332,15 @@ int main(int argc, char* argv[]) {
 	    	}
 	    	else 
 	    	{
-	    		sendto( sd, "Invalid operation!\n", 19, 0, (struct sockaddr *) &client, len );
+				// Creating an "invalid operation" error packet
+				error_packet error = malloc(sizeof(error_packet));
+				error.opcode = 5;
+				error_code = 4;
+				strcpy(error_message[256], "Illegal TFTP operation.\n");
+				padding = 0;
+
+				// Sending error packet
+	    		sendto( sd, error, sizeof(error_packet), 0, (struct sockaddr *) &client, len );
 	    	}
 	    }
 	}
