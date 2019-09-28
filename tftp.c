@@ -57,12 +57,18 @@ typedef struct error_packet {
 } error_packet;
 
 typedef struct tftp_packet{
-	int packet_type; //0: request_packet, 1: data_packet,...
-	request_packet rp; // 0
-	data_packet dp; // 1
-	ack_packet ap; // 2
-	error_packet ep; //3
+	uint16_t packet_type;         
+    uint8_t fname_and_mode[276];
+	request_packet rp; // 1 and 2
+	data_packet dp; // 3
+	ack_packet ap; // 4
+	error_packet ep; //5
 } tftp_packet;
+
+typedef struct test_request{
+      uint16_t opcode; /* RRQ or WRQ */             
+      uint8_t filename_and_mode[514];
+ } test_request;     
 
 
 void handle_alarm(int sig) {
@@ -79,8 +85,6 @@ int main(int argc, char* argv[]) {
 
 	// Installing the alarm handler
 	signal(SIGALRM, handle_alarm);
-
-	int t = time(NULL);
 
 	// Read in the start and end ports
 	unsigned short int startPort = atoi(argv[1]);
@@ -129,16 +133,22 @@ int main(int argc, char* argv[]) {
 
 
   	int n;
-  	char buffer[ MAXBUFFER ];
-  	struct sockaddr_in client;
-  	int len = sizeof( client );
-  	tftp_packet* client_request = malloc(sizeof(tftp_packet));
 	while ( 1 )
 	{
+		char buffer[ MAXBUFFER ];
+	  	struct sockaddr_in client;
+	  	int len = sizeof( client );
+	  	tftp_packet client_request;
+	  	// test_request* trq = malloc(sizeof(test_request));
 
 	    /* read a datagram from the remote client side (BLOCKING) */
-	    n = recvfrom( sd, client_request, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
+	    n = recvfrom( sd, &client_request, sizeof(tftp_packet), 0, (struct sockaddr *) &client,
 	                  (socklen_t *) &len );
+
+	    int opcode = ntohs(client_request.packet_type);
+	    printf("opcode: %d\n", opcode);
+	    printf("filename and mode: %s\n", client_request.fname_and_mode);
+
 
 	    // Set alarm for 10 seconds, and terminate the program if no response
 	    printf("Setting up alarm for 10 seconds.\n");
@@ -152,20 +162,22 @@ int main(int argc, char* argv[]) {
 	    {
 	    	printf( "Rcvd datagram from %s port %d\n",
 				inet_ntoa( client.sin_addr ), ntohs( client.sin_port ) );
-			// printf("Packet type: %d\n", client_request->packet_type);
-			// printf("filename: %s\n", client_request->rp.filename);
-			// printf("padding1: %u\n", client_request->rp.padding1);
-			// printf("mode: %s\n", client_request->rp.mode);
-			// printf("padding2: %u\n", client_request->rp.padding2);
 
-	    	if(client_request->packet_type == 0) // Request packet
+	    	client_request.rp.opcode = opcode;
+	    	strcpy(client_request.rp.filename, (char*)client_request.fname_and_mode);
+	    	client_request.rp.padding1 = 0;
+	    	strcpy(client_request.rp.mode, "octet");
+	    	client_request.rp.padding2 = 0;
+
+	    	if(opcode == 1 || opcode == 2) // Request packet
 	    	{
 	    		printf("Request packet identified\n");
-	    		request_packet packet = client_request->rp;
+	    		request_packet packet = client_request.rp;
 
-	    		if(packet.opcode == 1) //RRQ
+	    		if(opcode == 1) //RRQ
 	    		{
 
+	    			printf("This is the filename we need to open: %s\n", packet.filename);
 	    			//check if this file exists
 	    			if( access( packet.filename, F_OK ) != -1 ) 
 	    			{
@@ -243,12 +255,9 @@ int main(int argc, char* argv[]) {
 	    				printf("This file doesn't exist\n");
 	    			
 	    			}
-	    			break;
-
-
-
 	    		}
-	    		else if(packet.opcode == 2) //WRQ
+
+	    		else if(opcode == 2) //WRQ
 	    		{
 
 	    			//Cannot write to a file that already exists
@@ -303,14 +312,15 @@ int main(int argc, char* argv[]) {
 								break;
 							}
 						}
-
 						fclose(file);
 	    			}
+
 	    		}
 	    	}
-			/* echo the data back to the sender/client */
-			sendto( sd, buffer, n, 0, (struct sockaddr *) &client, len );
-			/* to do: check the return code of sendto() */
+	    	else 
+	    	{
+	    		sendto( sd, "Invalid operation!\n", 19, 0, (struct sockaddr *) &client, len );
+	    	}
 	    }
 	}
 
