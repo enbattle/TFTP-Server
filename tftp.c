@@ -159,7 +159,7 @@ int main(int argc, char* argv[]) {
 	    			{
 	    				//open the file for reading
     				    FILE *file = fopen(filename, "r");
-    				    char* file_string;
+    				    uint8_t* file_string;
 					    size_t n = 0;
 					    int c;
 
@@ -171,13 +171,14 @@ int main(int argc, char* argv[]) {
 					    printf("This is the length of the file: %ld\n", f_size);
 
 					    data_packet* file_data_packet;
+					    ack_packet acknowledgement;
 					    if(f_size < 512)
 					    {
 					    	//send the entire file if it's less than 512 bytes
-					    	file_string = calloc(f_size, sizeof(char));
+					    	file_string = calloc(f_size, sizeof(uint8_t));
 						    while ((c = fgetc(file)) != EOF)
 						    {
-						        file_string[n++] = (char)c;
+						        file_string[n++] = (uint8_t)c;
 						    }
 						    // file_data_packet = malloc(sizeof(tftp_packet));
 						    // file_data_packet->dp.opcode = 3;
@@ -186,60 +187,76 @@ int main(int argc, char* argv[]) {
 						    file_data_packet->opcode = htons(3);
 						    file_data_packet->block_number = htons(1);
 						    // strncpy((uint8_t*)file_data_packet->data, file_string, n+1);
-						    memcpy(file_data_packet->data, (uint8_t*)file_string, n+1);
+						    memcpy(file_data_packet->data, file_string, n+1);
 						    printf("This is the the data we are about to send: %s\n", file_data_packet->data);
 							sendto(sd, file_data_packet, 4+n+1, 0, (struct sockaddr *) &client, len );	
 						    free(file_string);
 						    free(file_data_packet);
 
 						    //receive ack packet
-
+							recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client,
+								(socklen_t *) &len );
+							printf("Received acknowledgement packet. Opcode: %u, block number: %u\n", 
+								ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));
 
 					    }
 					    else
 					    {
-		// 			    	//iterate through the file and send every 512 bytes
-		// 			    	file_string = calloc(512, sizeof(char));
-		// 			    	int block_number = 1;
-		// 			    	while ((c = fgetc(file)) != EOF)
-		// 			    	{
-		// 			    		if(n == 511)
-		// 			    		{
-		// 						    // file_data_packet = malloc(sizeof(tftp_packet));
-		// 						    // file_data_packet->dp.opcode = htons(3);
-		// 						    // file_data_packet->dp.block_number = htons(block_number);
-		// 						    file_data_packet = malloc(sizeof(data_packet));
-		// 						    file_data_packet->opcode = htons(3);
-		// 						    file_data_packet->block_number = htons(1);
-		// 						    strncpy(file_data_packet->data, file_string, n+1);
-		// 						    printf("This is the string I'm about to send: %s\n", file_string);
-		// 							sendto(sd, file_data_packet, 4+n+1, 0, (struct sockaddr *) &client, len );
-		// 				    		free(file_data_packet);
-		// 				    		memset(file_string,0,n); //empty the string
-		// 				    		n = 0;
-		// 				    		block_number++;
-		// 			    		}
-		// 			    		else
-		// 			    		{
-		// 			    			file_string[n++] = (char)c;
-		// 			    		}
-		// 			    	}
+					    	//iterate through the file and send every 512 bytes
+					    	file_string = calloc(512, sizeof(uint8_t));
+					    	int block_number = 1;
+					    	while ((c = fgetc(file)) != EOF)
+					    	{
+					    		if(n == 511)
+					    		{
+								    // file_data_packet = malloc(sizeof(tftp_packet));
+								    // file_data_packet->dp.opcode = htons(3);
+								    // file_data_packet->dp.block_number = htons(block_number);
+					    			file_string[n++] = (uint8_t)c;
+								    file_data_packet = malloc(sizeof(data_packet));
+								    file_data_packet->opcode = htons(3);
+								    file_data_packet->block_number = htons(block_number);
+						    		memcpy(file_data_packet->data, file_string, n+1);
+								    printf("This is the string I'm about to send: %s\n", file_string);
+									sendto(sd, file_data_packet, 4+n+1, 0, (struct sockaddr *) &client, len );	
+						    		free(file_data_packet);
+						    		memset(file_string,0,n+1); //empty the string
+						    		n = 0;
+						    		block_number++;
 
-		// 			    	//send leftover string (last bloc)
-		// 			    	if(n != 0)
-		// 			    	{ 
-		// 					    // file_data_packet = malloc(sizeof(tftp_packet));
-		// 					    // file_data_packet->dp.opcode = htons(3);
-		// 					    // file_data_packet->dp.block_number = htons(block_number);
-		// 	    			    file_data_packet = malloc(sizeof(data_packet));
-		// 					    file_data_packet->opcode = htons(3);
-		// 					    file_data_packet->block_number = htons(1);
-		// 					    strncpy(file_data_packet->data, file_string, n+1);
-		// 						printf("This is the string I'm about to send: %s\n", file_string);
-		// 						sendto(sd, file_data_packet, 4+n+1, 0, (struct sockaddr *) &client, len );	
-		// 				    	free(file_data_packet);			    		
-		// 			    	}
-		// 			    	free(file_string);
+									//receive ack packet
+									recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client,
+										(socklen_t *) &len );
+									printf("Received acknowledgement packet. Opcode: %u, block number: %u\n", 
+										ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));
+					    		}
+					    		else
+					    		{
+					    			file_string[n++] = (uint8_t)c;
+					    		}
+					    	}
+
+					    	//send leftover string (last block)
+					    	if(n != 0)
+					    	{ 
+							    // file_data_packet = malloc(sizeof(tftp_packet));
+							    // file_data_packet->dp.opcode = htons(3);
+							    // file_data_packet->dp.block_number = htons(block_number);
+			    			    file_data_packet = malloc(sizeof(data_packet));
+							    file_data_packet->opcode = htons(3);
+							    file_data_packet->block_number = htons(block_number);
+						    	memcpy(file_data_packet->data, file_string, n+1);
+								printf("This is the string I'm about to send: %s\n", file_string);
+								sendto(sd, file_data_packet, 4+n+1, 0, (struct sockaddr *) &client, len );	
+						    	free(file_data_packet);	
+
+								//receive ack packet
+								recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client,
+									(socklen_t *) &len );
+								printf("Received acknowledgement packet. Opcode: %u, block number: %u\n", 
+									ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));		    		
+					    	}
+					    	free(file_string);
 					    }
 					    fclose(file);
 	    			}
