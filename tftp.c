@@ -69,7 +69,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 	int sd = socket(AF_INET, SOCK_DGRAM, 0);
 
 	if(sd < 0) {
-		fprintf(stderr, "ERROR: socket creation failed!\n");
+		fprintf(stderr, "CHILD: ERROR socket creation failed!\n");
 		exit(1);
 	}
 
@@ -82,19 +82,19 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 
 	// Bind server to a port
 	if(bind(sd, (struct sockaddr*) &server, length) < 0) {
-		fprintf(stderr, "ERROR: Bind to TFTP socket failed!\n");
+		fprintf(stderr, "CHILD: ERROR Bind to TFTP socket failed!\n");
 		exit(1);
 	}
 
 	// Obtain the assigned port number
 	if(getsockname(sd, (struct sockaddr*) &server, (socklen_t *) &length) < 0) {
-		fprintf(stderr, "ERROR: Failure getting the port number!\n");
+		fprintf(stderr, "CHILD: ERROR Failure getting the port number!\n");
 		exit(1);
 	}
 
 	if(opcode == 1) //RRQ
 	{
-		printf("CHILD: This is the filename we need to open: %s\n", client_request->filename);
+		printf("CHILD: This is the filename we need to READ: %s\n", client_request->filename);
 		char* filename = (char*)client_request->filename;
 
 		//check if this file exists
@@ -109,7 +109,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		    //send error if could not open file
 		    if (file == NULL) 
 		    {
-				fprintf(stderr, "ERROR: Could not open file.\n");
+				fprintf(stderr, "CHILD: ERROR could not open file.\n");
 
 				// Creating an "file not found" error packet
 				error_packet* error = malloc(sizeof(error_packet));
@@ -214,7 +214,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		}
 		else
 		{
-			fprintf(stderr, "ERROR: File not found.\n");
+			fprintf(stderr, "CHILD: ERROR File not found.\n");
 
 			// Creating an "file not found" error packet
 			error_packet* error = malloc(sizeof(error_packet));
@@ -237,7 +237,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		if( access( filename, F_OK ) != -1 )
 		{
 
-			fprintf(stderr, "ERROR: File already exists.\n");
+			fprintf(stderr, "CHILD: ERROR File already exists.\n");
 
 			// Creating an "file already exists" error packet
 			error_packet* error = malloc(sizeof(error_packet));
@@ -259,7 +259,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		    if(file == NULL)
 		    {
 		        /* File not created hence exit */
-		        fprintf(stderr, "ERROR: Unable to create file.\n");
+		        fprintf(stderr, "CHILD: ERROR Unable to create file.\n");
 		        exit(1);
 		    }
 
@@ -302,7 +302,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 int main(int argc, char* argv[]) {
 	// Check that there are three command line arguments --- file, start port, and end port
 	if(argc != 3) {
-		fprintf(stderr, "ERROR: Invalid arguments!\n");
+		fprintf(stderr, "MAIN: ERROR Invalid arguments!\n");
 		return EXIT_FAILURE;
 	}
 
@@ -320,7 +320,7 @@ int main(int argc, char* argv[]) {
 	int sd = socket(AF_INET, SOCK_DGRAM, 0);
 
 	if(sd < 0) {
-		fprintf(stderr, "ERROR: socket creation failed!\n");
+		fprintf(stderr, "MAIN: ERROR socket creation failed!\n");
 		return EXIT_FAILURE;
 	}
 
@@ -333,20 +333,20 @@ int main(int argc, char* argv[]) {
 
 	// Bind server to a port
 	if(bind(sd, (struct sockaddr*) &server, length) < 0) {
-		fprintf(stderr, "ERROR: Bind to TFTP socket failed!\n");
+		fprintf(stderr, "MAIN: ERROR Bind to TFTP socket failed!\n");
 		return EXIT_FAILURE;
 	}
 
 	// Obtain the assigned port number
 	if(getsockname(sd, (struct sockaddr*) &server, (socklen_t *) &length) < 0) {
-		fprintf(stderr, "ERROR: Failure getting the port number!\n");
+		fprintf(stderr, "MAIN: ERROR Failure getting the port number!\n");
 		return EXIT_FAILURE;
 	}
 
 	//---------Application Level---------------------------------------
 
 	// Server is starting
-	printf("TFTP server at port number %d\n", ntohs(server.sin_port));
+	printf("MAIN: TFTP server at port number %d\n", ntohs(server.sin_port));
 
   	int n;
 	while ( 1 )
@@ -360,39 +360,39 @@ int main(int argc, char* argv[]) {
 	                  (socklen_t *) &len );
 
 	    int opcode = ntohs(client_request.opcode);
-	    printf("opcode: %d\n", opcode);
-	    printf("filename: %s\n", client_request.filename);
+	    printf("MAIN: opcode: %d\n", opcode);
+	    printf("MAIN: filename: %s\n", client_request.filename);
 
 	    // Set alarm for 10 seconds, and terminate the program if no response
 		alarm(10);
 
 		if ( n == -1 ) 
 		{
-	      perror( "recvfrom() failed" );
+	      perror( "MAIN: recvfrom() failed" );
 	    }
 	    else
 	    {
-	    	printf( "Rcvd datagram from %s port %d\n",
+	    	printf( "MAIN: Rcvd datagram from %s port %d\n",
 				inet_ntoa( client.sin_addr ), ntohs( client.sin_port ) );
 
 	    	if(opcode == 1 || opcode == 2) // Request packet
 	    	{
-	    		printf("Request packet identified\n");
+	    		printf("MAIN: Request packet identified\n");
 	    		int pid = fork();
 	    		if(pid == 0){ //child
-	    			startPort++;
-	    			handleRequest(startPort, opcode, &client, len, &client_request);
+	    			int newPort = ++startPort;
+	    			handleRequest(newPort, opcode, &client, len, &client_request);
 	    			return EXIT_SUCCESS;
 	    		}
 	    		else {
 	    			if(startPort == endPort) {
-	    				printf("endPort reached!\n");
+	    				printf("MAIN: endPort reached!\n");
 	    			}
 	    		}
 	    	}
 	    	else 
 	    	{
-	    		fprintf(stderr, "ERROR: Illegal TFTP operation.\n");
+	    		fprintf(stderr, "MAIN: ERROR Illegal TFTP operation.\n");
 
 				// Creating an "invalid operation" error packet
 				error_packet* error = malloc(sizeof(error_packet));
