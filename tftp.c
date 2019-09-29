@@ -62,12 +62,41 @@ void handle_alarm(int sig) {
 	exit(0);
 }
 
-void handleRequest(int opcode, struct sockaddr_in* client, int len, request_packet* client_request, int sd){
+void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in* client, 
+	int len, request_packet* client_request){
+
+	// Create TFTP socket
+	int sd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if(sd < 0) {
+		fprintf(stderr, "ERROR: socket creation failed!\n");
+		exit(1);
+	}
+
+	// Create server struct
+	struct sockaddr_in server;
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = htonl(INADDR_ANY);
+	server.sin_port = htons(startPort);
+	int length = sizeof(server);
+
+	// Bind server to a port
+	if(bind(sd, (struct sockaddr*) &server, length) < 0) {
+		fprintf(stderr, "ERROR: Bind to TFTP socket failed!\n");
+		exit(1);
+	}
+
+	// Obtain the assigned port number
+	if(getsockname(sd, (struct sockaddr*) &server, (socklen_t *) &length) < 0) {
+		fprintf(stderr, "ERROR: Failure getting the port number!\n");
+		exit(1);
+	}
+
 	if(opcode == 1) //RRQ
 	{
-
 		printf("CHILD: This is the filename we need to open: %s\n", client_request->filename);
 		char* filename = (char*)client_request->filename;
+
 		//check if this file exists
 		if( access( filename, F_OK ) != -1 ) 
 		{
@@ -278,7 +307,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Installing the alarm handler
-	// signal(SIGALRM, handle_alarm);
+	signal(SIGALRM, handle_alarm);
 
 	// Read in the start and end ports
 	unsigned short int startPort = atoi(argv[1]);
@@ -325,13 +354,6 @@ int main(int argc, char* argv[]) {
 	  	struct sockaddr_in client;
 	  	int len = sizeof( client );
 	  	request_packet client_request;
-	  	// test_request* trq = malloc(sizeof(test_request));
-	  	if(startPort == endPort) {
-	  		pid_t child_pid;
-	  		int status;
-	  		while((child_pid = wait(&status)) > 0);
-	  		break;
-	  	}
 
 	    /* read a datagram from the remote client side (BLOCKING) */
 	    n = recvfrom( sd, &client_request, sizeof(request_packet), 0, (struct sockaddr *) &client,
@@ -342,7 +364,7 @@ int main(int argc, char* argv[]) {
 	    printf("filename: %s\n", client_request.filename);
 
 	    // Set alarm for 10 seconds, and terminate the program if no response
-		// alarm(10);
+		alarm(10);
 
 		if ( n == -1 ) 
 		{
@@ -358,36 +380,14 @@ int main(int argc, char* argv[]) {
 	    		printf("Request packet identified\n");
 	    		int pid = fork();
 	    		if(pid == 0){ //child
-	    			handleRequest(opcode, &client, len, &client_request, sd);
-	    			break;
-	    		} else { //parent
-
-					// Create TFTP socket
-					sd = socket(AF_INET, SOCK_DGRAM, 0);
-
-					if(sd < 0) {
-						fprintf(stderr, "ERROR: socket creation failed!\n");
-						return EXIT_FAILURE;
-					}
-
-					// Create server struct
-					server.sin_family = AF_INET;
-					server.sin_addr.s_addr = htonl(INADDR_ANY);
-					server.sin_port = htons(++startPort);
-					length = sizeof(server);
-
-					// Bind server to a port
-					if(bind(sd, (struct sockaddr*) &server, length) < 0) {
-						fprintf(stderr, "ERROR: Bind to TFTP socket failed!\n");
-						return EXIT_FAILURE;
-					}
-
-					// Obtain the assigned port number
-					if(getsockname(sd, (struct sockaddr*) &server, (socklen_t *) &length) < 0) {
-						fprintf(stderr, "ERROR: Failure getting the port number!\n");
-						return EXIT_FAILURE;
-					}    			
-
+	    			startPort++;
+	    			handleRequest(startPort, opcode, &client, len, &client_request);
+	    			return EXIT_SUCCESS;
+	    		}
+	    		else {
+	    			if(startPort == endPort) {
+	    				printf("endPort reached!\n");
+	    			}
 	    		}
 	    	}
 	    	else 
