@@ -120,11 +120,11 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 				// Creating an "file not found" error packet
 				error_packet* error = malloc(sizeof(error_packet));
 				error->opcode = htons(5);
-				error->error_code = 4;
+				error->error_code = htons(0);
 				memcpy(error->error_message, (uint8_t*)file_not_open_str, strlen(file_not_open_str));
 
 				// Sending error packet
-	    		sendto( sd, error, 4 + strlen(file_not_found_str) + 1, 0, 
+	    		sendto( sd, error, 4 + strlen(file_not_found_str), 0, 
 	    			(struct sockaddr *) client, len );
 	    		free(error);
 	    		exit(1);
@@ -225,11 +225,11 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 			// Creating an "file not found" error packet
 			error_packet* error = malloc(sizeof(error_packet));
 			error->opcode = htons(5);
-			error->error_code = 4;
+			error->error_code = htons(1);
 			memcpy(error->error_message, (uint8_t*)file_not_found_str, strlen(file_not_found_str));
 
 			// Sending error packet
-    		sendto( sd, error, 4 + strlen(file_not_found_str) + 1, 0, 
+    		sendto( sd, error, 4 + strlen(file_not_found_str), 0, 
     			(struct sockaddr *) client, len );
     		free(error);
 		}
@@ -247,11 +247,11 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 			// Creating an "file already exists" error packet
 			error_packet* error = malloc(sizeof(error_packet));
 			error->opcode = htons(5);
-			error->error_code = 4;
+			error->error_code = htons(6);
 			memcpy(error->error_message, (uint8_t*)file_already_exists_str, strlen(file_already_exists_str));
 
 			// Sending error packet
-    		sendto( sd, error, 4 + strlen(file_already_exists_str) + 1, 0, 
+    		sendto( sd, error, 4 + strlen(file_already_exists_str), 0, 
     			(struct sockaddr *) client, len );
     		free(error);
 
