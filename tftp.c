@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <time.h>
+#include<sys/wait.h> 
 
 #define MAXBUFFER 512
 #define ADDRBUFFER 128
@@ -28,7 +29,11 @@
    // 5         Unknown transfer ID.
    // 6         File already exists.
    // 7         No such user.
-//only need to do code 1,4, and 6
+
+char* file_not_found_str = "File not found.";
+char* file_already_exists_str = "File already exists.";
+char* illegal_operation_str = "Illegal TFTP operation.";
+char* file_not_open_str = "Could not open file";
 
 typedef struct request_packet {
    uint16_t opcode;
@@ -52,18 +57,217 @@ typedef struct error_packet {
    uint8_t error_message[256];
 } error_packet;
 
-// typedef struct tftp_packet{
-// 	uint16_t packet_type;         
-//     uint8_t fname_and_mode[276];
-// 	request_packet rp; // 1 and 2
-// 	data_packet dp; // 3
-// 	ack_packet ap; // 4
-// 	error_packet ep; //5
-// } tftp_packet;
-
 void handle_alarm(int sig) {
 	printf("No response after 10 seconds. Program terminated.\n");
 	exit(0);
+}
+
+void handleRequest(int opcode, struct sockaddr_in* client, int len, request_packet* client_request, int sd){
+	if(opcode == 1) //RRQ
+	{
+
+		printf("CHILD: This is the filename we need to open: %s\n", client_request->filename);
+		char* filename = (char*)client_request->filename;
+		//check if this file exists
+		if( access( filename, F_OK ) != -1 ) 
+		{
+			//open the file for reading
+		    FILE *file = fopen(filename, "r");
+		    uint8_t* file_string;
+		    size_t n = 0;
+		    int c;
+
+		    //send error if could not open file
+		    if (file == NULL) 
+		    {
+				fprintf(stderr, "ERROR: Could not open file.\n");
+
+				// Creating an "file not found" error packet
+				error_packet* error = malloc(sizeof(error_packet));
+				error->opcode = htons(5);
+				error->error_code = 4;
+				memcpy(error->error_message, (uint8_t*)file_not_open_str, strlen(file_not_open_str));
+
+				// Sending error packet
+	    		sendto( sd, error, 4 + strlen(file_not_found_str) + 1, 0, 
+	    			(struct sockaddr *) client, len );
+	    		free(error);
+	    		exit(1);
+		    }
+
+		    fseek(file, 0, SEEK_END);
+		    long f_size = ftell(file);
+		    fseek(file, 0, SEEK_SET);
+
+		    printf("CHILD: This is the length of the file: %ld\n", f_size);
+
+		    data_packet* file_data_packet;
+		    ack_packet acknowledgement;
+		    if(f_size < 512)
+		    {
+		    	//send the entire file if it's less than 512 bytes
+		    	file_string = calloc(f_size, sizeof(uint8_t));
+			    while ((c = fgetc(file)) != EOF)
+			    {
+			        file_string[n++] = (uint8_t)c;
+			    }
+
+			    data_packet* file_data_packet = malloc(sizeof(data_packet));
+			    file_data_packet->opcode = htons(3);
+			    file_data_packet->block_number = htons(1);
+			    memcpy(file_data_packet->data, file_string, n);
+			    // printf("This is the the data we are about to send: %s\n", file_data_packet->data);
+				sendto(sd, file_data_packet, 4+n, 0, (struct sockaddr *) client, len );	
+			    free(file_data_packet);
+			    // sendDataPacket(sd, file_string, n, 1, &client, len);
+			    free(file_string);
+
+			    //receive ack packet
+				recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) client,
+					(socklen_t *) &len );
+				printf("CHILD: Received acknowledgement packet. Opcode: %u, block number: %u\n", 
+					ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));
+		    }
+		    else
+		    {
+		    	//iterate through the file and send every 512 bytes
+		    	file_string = calloc(512, sizeof(uint8_t));
+		    	int block_number = 1;
+		    	while ((c = fgetc(file)) != EOF)
+		    	{
+		    		if(n == 511)
+		    		{
+		    			file_string[n++] = (uint8_t)c;
+					    file_data_packet = malloc(sizeof(data_packet));
+					    file_data_packet->opcode = htons(3);
+					    file_data_packet->block_number = htons(block_number);
+			    		memcpy(file_data_packet->data, file_string, n);
+						sendto(sd, file_data_packet, 4+n, 0, (struct sockaddr *) client, len );	
+			    		free(file_data_packet);
+			    		memset(file_string,0,n); //empty the string
+			    		n = 0;
+			    		block_number++;
+
+						//receive ack packet
+						recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) client,
+							(socklen_t *) &len );
+						printf("CHILD: Received acknowledgement packet. Opcode: %u, block number: %u\n", 
+							ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));
+		    		}
+		    		else
+		    		{
+		    			file_string[n++] = (uint8_t)c;
+		    		}
+		    	}
+
+		    	//send leftover string (last block)
+		    	if(n != 0)
+		    	{ 
+				    // file_data_packet = malloc(sizeof(tftp_packet));
+				    // file_data_packet->dp.opcode = htons(3);
+				    // file_data_packet->dp.block_number = htons(block_number);
+    			    file_data_packet = malloc(sizeof(data_packet));
+				    file_data_packet->opcode = htons(3);
+				    file_data_packet->block_number = htons(block_number);
+			    	memcpy(file_data_packet->data, file_string, n);
+					sendto(sd, file_data_packet, 4+n, 0, (struct sockaddr *) client, len );	
+			    	free(file_data_packet);	
+
+					//receive ack packet
+					recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) client,
+						(socklen_t *) &len );
+					printf("CHILD: Received acknowledgement packet. Opcode: %u, block number: %u\n", 
+						ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));		    		
+		    	}
+		    	free(file_string);
+		    }
+		    fclose(file);
+		}
+		else
+		{
+			fprintf(stderr, "ERROR: File not found.\n");
+
+			// Creating an "file not found" error packet
+			error_packet* error = malloc(sizeof(error_packet));
+			error->opcode = htons(5);
+			error->error_code = 4;
+			memcpy(error->error_message, (uint8_t*)file_not_found_str, strlen(file_not_found_str));
+
+			// Sending error packet
+    		sendto( sd, error, 4 + strlen(file_not_found_str) + 1, 0, 
+    			(struct sockaddr *) client, len );
+    		free(error);
+		}
+	}
+	else if(opcode == 2) //WRQ
+	{
+		printf("CHILD: This is the filename we need to write to: %s\n", client_request->filename);
+		char* filename = (char*)client_request->filename;
+
+		//Cannot write to a file that already exists
+		if( access( filename, F_OK ) != -1 )
+		{
+
+			fprintf(stderr, "ERROR: File already exists.\n");
+
+			// Creating an "file already exists" error packet
+			error_packet* error = malloc(sizeof(error_packet));
+			error->opcode = htons(5);
+			error->error_code = 4;
+			memcpy(error->error_message, (uint8_t*)file_already_exists_str, strlen(file_already_exists_str));
+
+			// Sending error packet
+    		sendto( sd, error, 4 + strlen(file_already_exists_str) + 1, 0, 
+    			(struct sockaddr *) client, len );
+    		free(error);
+
+		}
+		else
+		{
+			//Open new file for writing
+			FILE *file = fopen(filename ,"w");
+
+		    if(file == NULL)
+		    {
+		        /* File not created hence exit */
+		        fprintf(stderr, "ERROR: Unable to create file.\n");
+		        exit(1);
+		    }
+
+			//send an acknowledgement packet
+			ack_packet acknowledgement;
+			acknowledgement.opcode = htons(4);
+			acknowledgement.block_number = htons(0);
+			sendto(sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) client, len );
+
+			//read the file in blocks of 512 bytes
+			int num_bytes;
+			data_packet* client_packet;
+			while(1)
+			{
+				client_packet = malloc(sizeof(data_packet));
+				num_bytes = recvfrom( sd, client_packet, sizeof(data_packet), 0, (struct sockaddr *) client,
+					(socklen_t *) &len );
+				num_bytes -= 4; //opcode and block number
+				fwrite(client_packet->data, 1, num_bytes, file);
+			    memset(client_packet->data, 0, 512); //empty the string
+
+				//send an acknowledgement for each packet received
+    			acknowledgement.opcode = htons(4);
+    			acknowledgement.block_number = client_packet->block_number;
+				sendto(sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) client, len);
+				free(client_packet);
+
+				if(num_bytes < 512)
+				{
+					printf("CHILD: Client closed connection\n");
+					break;
+				}
+			}
+
+			fclose(file);
+		}
+	}
 }
 
 int main(int argc, char* argv[]) {
@@ -74,7 +278,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Installing the alarm handler
-	signal(SIGALRM, handle_alarm);
+	// signal(SIGALRM, handle_alarm);
 
 	// Read in the start and end ports
 	unsigned short int startPort = atoi(argv[1]);
@@ -110,16 +314,10 @@ int main(int argc, char* argv[]) {
 		return EXIT_FAILURE;
 	}
 
-
 	//---------Application Level---------------------------------------
 
 	// Server is starting
 	printf("TFTP server at port number %d\n", ntohs(server.sin_port));
-
-	char* file_not_found_str = "File not found.";
-	char* file_already_exists_str = "File already exists.";
-	char* illegal_operation_str = "Illegal TFTP operation.";
-
 
   	int n;
 	while ( 1 )
@@ -128,6 +326,12 @@ int main(int argc, char* argv[]) {
 	  	int len = sizeof( client );
 	  	request_packet client_request;
 	  	// test_request* trq = malloc(sizeof(test_request));
+	  	if(startPort == endPort) {
+	  		pid_t child_pid;
+	  		int status;
+	  		while((child_pid = wait(&status)) > 0);
+	  		break;
+	  	}
 
 	    /* read a datagram from the remote client side (BLOCKING) */
 	    n = recvfrom( sd, &client_request, sizeof(request_packet), 0, (struct sockaddr *) &client,
@@ -138,8 +342,7 @@ int main(int argc, char* argv[]) {
 	    printf("filename: %s\n", client_request.filename);
 
 	    // Set alarm for 10 seconds, and terminate the program if no response
-	    printf("Setting up alarm for 10 seconds.\n");
-		alarm(10);
+		// alarm(10);
 
 		if ( n == -1 ) 
 		{
@@ -153,205 +356,37 @@ int main(int argc, char* argv[]) {
 	    	if(opcode == 1 || opcode == 2) // Request packet
 	    	{
 	    		printf("Request packet identified\n");
+	    		int pid = fork();
+	    		if(pid == 0){ //child
+	    			handleRequest(opcode, &client, len, &client_request, sd);
+	    			break;
+	    		} else { //parent
 
-	    		if(opcode == 1) //RRQ
-	    		{
+					// Create TFTP socket
+					sd = socket(AF_INET, SOCK_DGRAM, 0);
 
-	    			printf("This is the filename we need to open: %s\n", client_request.filename);
-	    			char* filename = (char*)client_request.filename;
-	    			//check if this file exists
-	    			if( access( filename, F_OK ) != -1 ) 
-	    			{
-	    				//open the file for reading
-    				    FILE *file = fopen(filename, "r");
-    				    uint8_t* file_string;
-					    size_t n = 0;
-					    int c;
+					if(sd < 0) {
+						fprintf(stderr, "ERROR: socket creation failed!\n");
+						return EXIT_FAILURE;
+					}
 
-					    if (file == NULL) return NULL; //could not open file
-					    fseek(file, 0, SEEK_END);
-					    long f_size = ftell(file);
-					    fseek(file, 0, SEEK_SET);
+					// Create server struct
+					server.sin_family = AF_INET;
+					server.sin_addr.s_addr = htonl(INADDR_ANY);
+					server.sin_port = htons(++startPort);
+					length = sizeof(server);
 
-					    printf("This is the length of the file: %ld\n", f_size);
+					// Bind server to a port
+					if(bind(sd, (struct sockaddr*) &server, length) < 0) {
+						fprintf(stderr, "ERROR: Bind to TFTP socket failed!\n");
+						return EXIT_FAILURE;
+					}
 
-					    data_packet* file_data_packet;
-					    ack_packet acknowledgement;
-					    if(f_size < 512)
-					    {
-					    	//send the entire file if it's less than 512 bytes
-					    	file_string = calloc(f_size, sizeof(uint8_t));
-						    while ((c = fgetc(file)) != EOF)
-						    {
-						        file_string[n++] = (uint8_t)c;
-						    }
-						    // file_data_packet = malloc(sizeof(tftp_packet));
-						    // file_data_packet->dp.opcode = 3;
-						    // file_data_packet->dp.block_number = 1;
-						    file_data_packet = malloc(sizeof(data_packet));
-						    file_data_packet->opcode = htons(3);
-						    file_data_packet->block_number = htons(1);
-						    // strncpy((uint8_t*)file_data_packet->data, file_string, n+1);
-						    memcpy(file_data_packet->data, file_string, n+1);
-						    printf("This is the the data we are about to send: %s\n", file_data_packet->data);
-							sendto(sd, file_data_packet, 4+n+1, 0, (struct sockaddr *) &client, len );	
-						    free(file_string);
-						    free(file_data_packet);
-
-						    //receive ack packet
-							recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client,
-								(socklen_t *) &len );
-							printf("Received acknowledgement packet. Opcode: %u, block number: %u\n", 
-								ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));
-
-					    }
-					    else
-					    {
-					    	//iterate through the file and send every 512 bytes
-					    	file_string = calloc(512, sizeof(uint8_t));
-					    	int block_number = 1;
-					    	while ((c = fgetc(file)) != EOF)
-					    	{
-					    		if(n == 511)
-					    		{
-								    // file_data_packet = malloc(sizeof(tftp_packet));
-								    // file_data_packet->dp.opcode = htons(3);
-								    // file_data_packet->dp.block_number = htons(block_number);
-					    			file_string[n++] = (uint8_t)c;
-								    file_data_packet = malloc(sizeof(data_packet));
-								    file_data_packet->opcode = htons(3);
-								    file_data_packet->block_number = htons(block_number);
-						    		memcpy(file_data_packet->data, file_string, n+1);
-								    printf("This is the string I'm about to send: %s\n", file_string);
-									sendto(sd, file_data_packet, 4+n+1, 0, (struct sockaddr *) &client, len );	
-						    		free(file_data_packet);
-						    		memset(file_string,0,n+1); //empty the string
-						    		n = 0;
-						    		block_number++;
-
-									//receive ack packet
-									recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client,
-										(socklen_t *) &len );
-									printf("Received acknowledgement packet. Opcode: %u, block number: %u\n", 
-										ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));
-					    		}
-					    		else
-					    		{
-					    			file_string[n++] = (uint8_t)c;
-					    		}
-					    	}
-
-					    	//send leftover string (last block)
-					    	if(n != 0)
-					    	{ 
-							    // file_data_packet = malloc(sizeof(tftp_packet));
-							    // file_data_packet->dp.opcode = htons(3);
-							    // file_data_packet->dp.block_number = htons(block_number);
-			    			    file_data_packet = malloc(sizeof(data_packet));
-							    file_data_packet->opcode = htons(3);
-							    file_data_packet->block_number = htons(block_number);
-						    	memcpy(file_data_packet->data, file_string, n+1);
-								printf("This is the string I'm about to send: %s\n", file_string);
-								sendto(sd, file_data_packet, 4+n+1, 0, (struct sockaddr *) &client, len );	
-						    	free(file_data_packet);	
-
-								//receive ack packet
-								recvfrom( sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client,
-									(socklen_t *) &len );
-								printf("Received acknowledgement packet. Opcode: %u, block number: %u\n", 
-									ntohs(acknowledgement.opcode), ntohs(acknowledgement.block_number));		    		
-					    	}
-					    	free(file_string);
-					    }
-					    fclose(file);
-	    			}
-	    			else
-	    			{
-	    				fprintf(stderr, "ERROR: File not found.\n");
-
-	    				// Creating an "file not found" error packet
-						error_packet* error = malloc(sizeof(error_packet));
-						error->opcode = htons(5);
-						error->error_code = 4;
-						memcpy(error->error_message, (uint8_t*)file_not_found_str, strlen(file_not_found_str));
-
-						// Sending error packet
-			    		sendto( sd, error, 4 + strlen(file_not_found_str) + 1, 0, 
-			    			(struct sockaddr *) &client, len );
-			    		free(error);
-	    			
-	    			}
-
-	    		}
-	    		else if(opcode == 2) //WRQ
-	    		{
-
-	    			printf("This is the filename we need to write to: %s\n", client_request.filename);
-	    			char* filename = (char*)client_request.filename;
-	    			//Cannot write to a file that already exists
-	    			if( access( filename, F_OK ) != -1 )
-	    			{
-
-						fprintf(stderr, "ERROR: File already exists.\n");
-
-	    				// Creating an "file already exists" error packet
-						error_packet* error = malloc(sizeof(error_packet));
-						error->opcode = htons(5);
-						error->error_code = 4;
-						memcpy(error->error_message, (uint8_t*)file_already_exists_str, strlen(file_already_exists_str));
-
-						// Sending error packet
-			    		sendto( sd, error, 4 + strlen(file_already_exists_str) + 1, 0, 
-			    			(struct sockaddr *) &client, len );
-			    		free(error);
-
-	    			}
-	    			else
-	    			{
-	    				//Open new file for writing
-	    				FILE *file = fopen(filename ,"w");
-
-    				    if(file == NULL)
-					    {
-					        /* File not created hence exit */
-					        fprintf(stderr, "ERROR: Unable to create file.\n");
-					        return EXIT_FAILURE;
-					    }
-
-		    			//send an acknowledgement packet
-		    			ack_packet acknowledgement;
-		    			acknowledgement.opcode = htons(4);
-		    			acknowledgement.block_number = htons(0);
-						sendto(sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client, len );
-
-						printf("About to write to %s\n", filename);
-
-						//read the file in blocks of 512 bytes
-						int num_bytes;
-						data_packet client_packet;
-						while(1)
-						{
-							recvfrom( sd, &client_packet, sizeof(data_packet), 0, (struct sockaddr *) &client,
-								(socklen_t *) &len );
-							num_bytes = strlen((char*)client_packet.data);
-							printf("RECEIVED (%d) bytes:\n%s\n", num_bytes, client_packet.data);
-							fwrite(client_packet.data, 1, num_bytes - 4, file);
-
-							//send an acknowledgement for each packet received
-			    			acknowledgement.opcode = htons(4);
-			    			acknowledgement.block_number = client_packet.block_number;
-			    			printf("Block number: %u\n", htons(acknowledgement.block_number));
-							sendto(sd, &acknowledgement, sizeof(ack_packet), 0, (struct sockaddr *) &client, len );
-
-							if(num_bytes < 512)
-							{
-								printf("Client closed connection\n");
-								//send an acknowledgement for each packet received
-								break;
-							}
-						}
-						fclose(file);
-	    			}
+					// Obtain the assigned port number
+					if(getsockname(sd, (struct sockaddr*) &server, (socklen_t *) &length) < 0) {
+						fprintf(stderr, "ERROR: Failure getting the port number!\n");
+						return EXIT_FAILURE;
+					}    			
 
 	    		}
 	    	}
@@ -366,7 +401,7 @@ int main(int argc, char* argv[]) {
 				memcpy(error->error_message, (uint8_t*)illegal_operation_str, strlen(illegal_operation_str));
 
 				// Sending error packet
-	    		sendto( sd, error, 4 + strlen(illegal_operation_str) + 1, 0, (struct sockaddr *) 
+	    		sendto( sd, error, 4 + strlen(illegal_operation_str), 0, (struct sockaddr *) 
 	    			&client, len );
 	    		free(error);
 	    	}
