@@ -80,6 +80,8 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 	server.sin_port = htons(startPort);
 	int length = sizeof(server);
 
+	printf("CHILD: This is the sd we are about to bind to: %d\n", sd);
+	printf("CHILD: This is the port we are about to bind to: %d\n", startPort);
 	// Bind server to a port
 	if(bind(sd, (struct sockaddr*) &server, length) < 0) {
 		fprintf(stderr, "CHILD: ERROR Bind to TFTP socket failed!\n");
@@ -92,6 +94,8 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		exit(1);
 	}
 
+	printf("CHILD: Before looking at the opcode here is the filename: %s\n", client_request->filename);
+
 	if(opcode == 1) //RRQ
 	{
 		printf("CHILD: This is the filename we need to READ: %s\n", client_request->filename);
@@ -100,6 +104,8 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		//check if this file exists
 		if( access( filename, F_OK ) != -1 ) 
 		{
+			printf("CHILD: About to open file in RRQ: %s\n", filename);
+
 			//open the file for reading
 		    FILE *file = fopen(filename, "r");
 		    uint8_t* file_string;
@@ -109,7 +115,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		    //send error if could not open file
 		    if (file == NULL) 
 		    {
-				fprintf(stderr, "CHILD: ERROR could not open file.\n");
+				printf("CHILD: ERROR could not open file.\n");
 
 				// Creating an "file not found" error packet
 				error_packet* error = malloc(sizeof(error_packet));
@@ -214,7 +220,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		}
 		else
 		{
-			fprintf(stderr, "CHILD: ERROR File not found.\n");
+			printf("CHILD: ERROR File not found.\n");
 
 			// Creating an "file not found" error packet
 			error_packet* error = malloc(sizeof(error_packet));
@@ -236,8 +242,7 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		//Cannot write to a file that already exists
 		if( access( filename, F_OK ) != -1 )
 		{
-
-			fprintf(stderr, "CHILD: ERROR File already exists.\n");
+			printf("CHILD: ERROR File already exists.\n");
 
 			// Creating an "file already exists" error packet
 			error_packet* error = malloc(sizeof(error_packet));
@@ -253,13 +258,15 @@ void handleRequest(unsigned short int startPort, int opcode, struct sockaddr_in*
 		}
 		else
 		{
+			printf("About to open file in WRQ: %s\n", filename);
+
 			//Open new file for writing
 			FILE *file = fopen(filename ,"w");
 
 		    if(file == NULL)
 		    {
 		        /* File not created hence exit */
-		        fprintf(stderr, "CHILD: ERROR Unable to create file.\n");
+		        printf("CHILD: ERROR Unable to create file.\n");
 		        exit(1);
 		    }
 
@@ -379,9 +386,9 @@ int main(int argc, char* argv[]) {
 	    	{
 	    		printf("MAIN: Request packet identified\n");
 	    		int pid = fork();
+	    		startPort++;
 	    		if(pid == 0){ //child
-	    			int newPort = ++startPort;
-	    			handleRequest(newPort, opcode, &client, len, &client_request);
+	    			handleRequest(startPort, opcode, &client, len, &client_request);
 	    			return EXIT_SUCCESS;
 	    		}
 	    		else {
@@ -392,7 +399,7 @@ int main(int argc, char* argv[]) {
 	    	}
 	    	else 
 	    	{
-	    		fprintf(stderr, "MAIN: ERROR Illegal TFTP operation.\n");
+	    		printf("MAIN: ERROR Illegal TFTP operation.\n");
 
 				// Creating an "invalid operation" error packet
 				error_packet* error = malloc(sizeof(error_packet));
